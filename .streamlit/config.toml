@@ -2,22 +2,26 @@
 # Primary color
 #primaryColor = "#1f77b4"  # Change this to your preferred color
 #primaryColor = "#DC2626"           # Professional red
-primaryColor = "#FF6B6B"           # Coral red
+#primaryColor = "#FF6B6B"           # Coral red
+primaryColor = "#059669"           # Forest green
 
 # Background color for the main content area
 #backgroundColor = "#ffffff"
 #backgroundColor = "#FFFFFF"        # White
-backgroundColor = "#0E1117"        # Dark background
+#backgroundColor = "#0E1117"        # Dark background
+backgroundColor = "#FFFFFF"        # White
 
 # Background color for sidebar and most interactive widgets
 #secondaryBackgroundColor = "#f0f2f6"
 #secondaryBackgroundColor = "#FEF2F2"  # Very light red tint
-secondaryBackgroundColor = "#262730"  # Darker gray
+#secondaryBackgroundColor = "#262730"  # Darker gray
+secondaryBackgroundColor = "#ECFDF5"  # Light green
 
 # Color used for almost all text
-textColor = "#262730"
+#textColor = "#262730"
 #textColor = "#1F2937"              # Dark gray
 #textColor = "#FAFAFA"              # Light text
+textColor = "#064E3B"              # Dark green
 
 # Font family for all text in the app, except code blocks
 font = "sans serif"
