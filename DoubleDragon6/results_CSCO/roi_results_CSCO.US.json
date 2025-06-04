@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": -2.7588567524196876,
+    "ROI in Benchmark": 6.394466003036947,
+    "Close Price": 63.06,
+    "Start Price": 59.27,
+    "Initial Money": 5000.0,
+    "Initial Base": 42.052144659377625,
+    "Initial Quote": 2500.0,
+    "Final Quote": 1641.6564743998208,
+    "Final Base": 51.06883425276236,
+    "Symbol": "CSCO.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 4862.057162379016,
+    "Combined Value in Base": 77.10207996160823,
+    "Total Trades": 23,
+    "Total Rebalances": 2,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

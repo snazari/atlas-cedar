@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 189.6925715798075,
+    "ROI in Benchmark": 1.924345295829284,
+    "Close Price": 262.71,
+    "Start Price": 257.75,
+    "Initial Money": 5000.0,
+    "Initial Base": 9.663703131039815,
+    "Initial Quote": 2500.0,
+    "Final Quote": 10615.687589950034,
+    "Final Base": 14.727041182445818,
+    "Symbol": "COIN.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 14484.628578990374,
+    "Combined Value in Base": 55.135429100492466,
+    "Total Trades": 534,
+    "Total Rebalances": 13,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

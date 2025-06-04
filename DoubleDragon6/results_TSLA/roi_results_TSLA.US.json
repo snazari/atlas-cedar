@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 131.74860689060296,
+    "ROI in Benchmark": -12.991540630607538,
+    "Close Price": 339.42,
+    "Start Price": 390.1,
+    "Initial Money": 5000.0,
+    "Initial Base": 6.499922000935989,
+    "Initial Quote": 2500.0,
+    "Final Quote": 769.185328539726,
+    "Final Base": 31.872738836811095,
+    "Symbol": "TSLA.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 11587.430344530148,
+    "Combined Value in Base": 34.138914455630626,
+    "Total Trades": 474,
+    "Total Rebalances": 13,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

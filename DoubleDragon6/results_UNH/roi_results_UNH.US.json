@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 5.831695462178377,
+    "ROI in Benchmark": -41.93307086614173,
+    "Close Price": 294.98,
+    "Start Price": 508.0,
+    "Initial Money": 5000.0,
+    "Initial Base": 4.906266754900968,
+    "Initial Quote": 2500.0,
+    "Final Quote": 0.0,
+    "Final Base": 17.93879169133134,
+    "Symbol": "UNH.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5291.584773108919,
+    "Combined Value in Base": 17.93879169133134,
+    "Total Trades": 124,
+    "Total Rebalances": 5,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

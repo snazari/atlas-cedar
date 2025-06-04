@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 21.371166335803025,
+    "ROI in Benchmark": 11.253068160362531,
+    "Close Price": 353.54,
+    "Start Price": 317.78,
+    "Initial Money": 5000.0,
+    "Initial Base": 7.892659826361484,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5758.517099566614,
+    "Final Base": 0.876962202929052,
+    "Symbol": "V.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6068.558316790151,
+    "Combined Value in Base": 17.16512506870552,
+    "Total Trades": 55,
+    "Total Rebalances": 1,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

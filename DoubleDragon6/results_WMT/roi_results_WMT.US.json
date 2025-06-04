@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 22.814330857812568,
+    "ROI in Benchmark": 6.489998894905512,
+    "Close Price": 96.3628,
+    "Start Price": 90.49,
+    "Initial Money": 5000.0,
+    "Initial Base": 27.624309392265193,
+    "Initial Quote": 2500.0,
+    "Final Quote": 6140.716542890628,
+    "Final Base": -3.552713678800501e-15,
+    "Symbol": "WMT.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6140.716542890628,
+    "Combined Value in Base": 63.72497003917101,
+    "Total Trades": 55,
+    "Total Rebalances": 2,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

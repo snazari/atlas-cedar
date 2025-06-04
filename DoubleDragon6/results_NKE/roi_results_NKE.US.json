@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 51.714661635558826,
+    "ROI in Benchmark": -20.95501183898973,
+    "Close Price": 60.09,
+    "Start Price": 76.02,
+    "Initial Money": 5000.0,
+    "Initial Base": 32.8493528677485,
+    "Initial Quote": 2500.0,
+    "Final Quote": 6405.475419457208,
+    "Final Base": 19.641498790493152,
+    "Symbol": "NKE.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 7585.733081777941,
+    "Combined Value in Base": 126.23952540818675,
+    "Total Trades": 206,
+    "Total Rebalances": 4,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

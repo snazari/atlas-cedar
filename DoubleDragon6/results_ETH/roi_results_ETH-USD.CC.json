@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 94.43699443122841,
+    "ROI in Benchmark": -21.01782308059131,
+    "Close Price": 2650.01,
+    "Start Price": 3355.2,
+    "Initial Money": 5000.0,
+    "Initial Base": 0.7464692006807799,
+    "Initial Quote": 2500.0,
+    "Final Quote": 9721.849721561422,
+    "Final Base": -3.8163916471489756e-16,
+    "Symbol": "ETH-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 9721.84972156142,
+    "Combined Value in Base": 3.6686086926318846,
+    "Total Trades": 692,
+    "Total Rebalances": 13,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}

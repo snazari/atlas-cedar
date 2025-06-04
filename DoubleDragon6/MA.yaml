@@ -1,0 +1,65 @@
+# DoubleDragon6 Configuration
+# Trading symbol and market configuration
+market:
+  symbol: "MA.US"  # Trading pair or stock symbol
+  is_stock: true  # Set to true for stocks, false for crypto
+  crypto_pair_switch: 0  # Set to 1 to enable crypto pair trading
+  results_dir: "./results_MA/" # Directory to save results
+
+# Date range and timezone
+timeframe:
+  start_date: "2025-01-01"
+  end_date: "2025-05-31"
+  timezone: "UTC"
+  interval1: "1d"  # Daily interval
+  interval2: "15m"  # Intraday interval
+  pivot_lookback: 1  # Days to look back for pivot calculation
+
+# Grid parameters
+grid:
+  grid_quantized_level: 0.002  # Grid spacing percentage
+  uniform_alloc_flag: 1  # 1 for uniform grid, 0 for non-uniform
+  support_bandwidth: 2  # Grid levels down for non-uniform allocation
+  spread_bandwidth: 2  # Spread of non-uniform allocation
+  centralized_conservative_alloc: 1
+  
+  # Support/Resistance levels
+  s_level_hk: 1
+  r_level_hk: 1
+  s_level_ax: 1
+  r_level_ax: 1
+  
+  # Grid steps
+  step_percent_hk: 0.02
+  step_percent_ax: 0.025
+  
+  check_rebalance_offgrid: 1  # Check for rebalancing when price moves significantly off grid
+  reset_grid_state: 0  # Initial grid state
+
+# Strategy parameters
+strategy:
+  interest_hk: 1  # Interest flag for highkick strategy
+  interest_ax: 0  # Interest flag for axekick strategy
+  recycle_profit_ax_to_hk: 1  # Recycle profits from ax to hk
+  maximize_base: 0  # 0 to maximize quote for hk
+  maximize_quote: 1  # 1 to maximize quote for ax
+
+# Capital allocation
+capital:
+  initial_money: 5000  # Total starting capital
+  initial_quote_hk_ratio: 0.5  # Ratio of initial money allocated to hk quote
+  initial_base_hk: 0  # Initial base currency for hk
+
+# Trading costs
+costs:
+  slippage_buy: 0.001
+  slippage_sell: 0.001
+  additional_trade_fee_margin: 0.000
+
+# API credentials
+api:
+  eohd_api_key: "5bbb687655d4f6.67318360"  # Enter your EOHD API key here
+
+# Debug and trigger parameters
+debug:
+  trigger: 1  # Trigger value for debugging 

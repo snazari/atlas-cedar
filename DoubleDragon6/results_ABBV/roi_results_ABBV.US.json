@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 40.5967762273144,
+    "ROI in Benchmark": 2.5803201612000524,
+    "Close Price": 183.27,
+    "Start Price": 178.66,
+    "Initial Money": 5000.0,
+    "Initial Base": 13.94567101269558,
+    "Initial Quote": 2500.0,
+    "Final Quote": 7029.83881136572,
+    "Final Base": 1.7763568394002505e-15,
+    "Symbol": "ABBV.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 7029.83881136572,
+    "Combined Value in Base": 38.357826220143615,
+    "Total Trades": 99,
+    "Total Rebalances": 1,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

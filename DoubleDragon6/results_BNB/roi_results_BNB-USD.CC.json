@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 33.105417481696946,
+    "ROI in Benchmark": -2.9975339437059,
+    "Close Price": 684.43,
+    "Start Price": 705.58,
+    "Initial Money": 5000.0,
+    "Initial Base": 3.5455963693093175,
+    "Initial Quote": 2500.0,
+    "Final Quote": 6655.2708740848475,
+    "Final Base": 0.0,
+    "Symbol": "BNB-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6655.2708740848475,
+    "Combined Value in Base": 9.723815253692631,
+    "Total Trades": 220,
+    "Total Rebalances": 7,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}

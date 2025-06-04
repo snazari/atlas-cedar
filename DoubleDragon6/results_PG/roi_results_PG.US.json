@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 22.246375590747157,
+    "ROI in Benchmark": -1.3415831275842551,
+    "Close Price": 165.83,
+    "Start Price": 168.085,
+    "Initial Money": 5000.0,
+    "Initial Base": 14.850896994178449,
+    "Initial Quote": 2500.0,
+    "Final Quote": 411.09871971677694,
+    "Final Base": 34.3799074945461,
+    "Symbol": "PG.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6112.318779537358,
+    "Combined Value in Base": 36.858944579010775,
+    "Total Trades": 38,
+    "Total Rebalances": 1,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

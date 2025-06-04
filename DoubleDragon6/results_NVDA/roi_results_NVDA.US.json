@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 300.3962428837849,
+    "ROI in Benchmark": -3.6951730218205956,
+    "Close Price": 131.0805,
+    "Start Price": 136.11,
+    "Initial Money": 5000.0,
+    "Initial Base": 18.32172957127153,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5579.652235415418,
+    "Final Base": 110.16253301424565,
+    "Symbol": "NVDA.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 20019.812144189244,
+    "Combined Value in Base": 152.72914082711955,
+    "Total Trades": 760,
+    "Total Rebalances": 16,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

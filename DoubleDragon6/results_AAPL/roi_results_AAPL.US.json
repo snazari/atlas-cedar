@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 34.72358422875368,
+    "ROI in Benchmark": -21.512071666733622,
+    "Close Price": 195.38,
+    "Start Price": 248.93,
+    "Initial Money": 5000.0,
+    "Initial Base": 10.195924892738871,
+    "Initial Quote": 2500.0,
+    "Final Quote": 3190.9060609811095,
+    "Final Base": 18.145527436055758,
+    "Symbol": "AAPL.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6736.179211437684,
+    "Combined Value in Base": 34.477322200008615,
+    "Total Trades": 156,
+    "Total Rebalances": 3,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

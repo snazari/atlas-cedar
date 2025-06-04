@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 13.512140298557716,
+    "ROI in Benchmark": 32.28643216080402,
+    "Close Price": 1184.625,
+    "Start Price": 895.5,
+    "Initial Money": 5000.0,
+    "Initial Base": 2.826391715280604,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5675.607014927886,
+    "Final Base": 2.42861286636753e-17,
+    "Symbol": "NFLX.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5675.607014927886,
+    "Combined Value in Base": 4.791057942325956,
+    "Total Trades": 84,
+    "Total Rebalances": 4,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

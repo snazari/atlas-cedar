@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 55.98320732535339,
+    "ROI in Benchmark": 12.159214830970551,
+    "Close Price": 61.71,
+    "Start Price": 55.02,
+    "Initial Money": 5000.0,
+    "Initial Base": 45.49590536851683,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5238.029984667539,
+    "Final Base": 41.50267998055632,
+    "Symbol": "IBIT.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 7799.16036626767,
+    "Combined Value in Base": 126.38406038353054,
+    "Total Trades": 120,
+    "Total Rebalances": 4,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

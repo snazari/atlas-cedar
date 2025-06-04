@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 53.23124880198355,
+    "ROI in Benchmark": -1.4436305855908098,
+    "Close Price": 508.61,
+    "Start Price": 516.06,
+    "Initial Money": 5000.0,
+    "Initial Base": 4.834841803976174,
+    "Initial Quote": 2500.0,
+    "Final Quote": 651.7190685273788,
+    "Final Base": 13.78235459698354,
+    "Symbol": "QQQ.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 7661.562440099177,
+    "Combined Value in Base": 15.063727492772806,
+    "Total Trades": 83,
+    "Total Rebalances": 3,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

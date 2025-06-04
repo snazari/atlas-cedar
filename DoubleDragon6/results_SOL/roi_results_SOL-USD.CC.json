@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 102.2996563645907,
+    "ROI in Benchmark": -7.509715366032971,
+    "Close Price": 176.12,
+    "Start Price": 190.42,
+    "Initial Money": 5000.0,
+    "Initial Base": 13.150281416022302,
+    "Initial Quote": 2500.0,
+    "Final Quote": 8911.369042026658,
+    "Final Base": 6.834055054524626,
+    "Symbol": "SOL-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 10114.982818229535,
+    "Combined Value in Base": 57.43233487525286,
+    "Total Trades": 1037,
+    "Total Rebalances": 17,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}

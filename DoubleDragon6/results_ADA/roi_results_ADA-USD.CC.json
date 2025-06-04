@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 115.58749388871617,
+    "ROI in Benchmark": -11.382304623327855,
+    "Close Price": 0.7552,
+    "Start Price": 0.8522,
+    "Initial Money": 5000.0,
+    "Initial Base": 2931.175987806308,
+    "Initial Quote": 2500.0,
+    "Final Quote": 9708.121889411808,
+    "Final Base": 1418.5021252966103,
+    "Symbol": "ADA-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 10779.374694435808,
+    "Combined Value in Base": 14273.536406827077,
+    "Total Trades": 1217,
+    "Total Rebalances": 23,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}

@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 188.67379369904214,
+    "ROI in Benchmark": -19.349976448422048,
+    "Close Price": 8.561,
+    "Start Price": 10.615,
+    "Initial Money": 5000.0,
+    "Initial Base": 234.7417840375587,
+    "Initial Quote": 2500.0,
+    "Final Quote": 10306.572432282608,
+    "Final Base": 482.08354779459165,
+    "Symbol": "RIOT.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 14433.689684952107,
+    "Combined Value in Base": 1685.9817410293315,
+    "Total Trades": 742,
+    "Total Rebalances": 16,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

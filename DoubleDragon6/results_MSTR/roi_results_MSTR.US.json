@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 117.67574384166149,
+    "ROI in Benchmark": 22.354308484144134,
+    "Close Price": 368.47,
+    "Start Price": 301.15,
+    "Initial Money": 5000.0,
+    "Initial Base": 8.265282507356101,
+    "Initial Quote": 2500.0,
+    "Final Quote": 0.0,
+    "Final Base": 29.537783787236613,
+    "Symbol": "MSTR.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 10883.787192083075,
+    "Combined Value in Base": 29.537783787236613,
+    "Total Trades": 757,
+    "Total Rebalances": 19,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

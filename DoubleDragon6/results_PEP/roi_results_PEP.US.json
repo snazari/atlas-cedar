@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 1.89915253719475,
+    "ROI in Benchmark": -15.279958137100985,
+    "Close Price": 129.52,
+    "Start Price": 152.88,
+    "Initial Money": 5000.0,
+    "Initial Base": 16.350555918901243,
+    "Initial Quote": 2500.0,
+    "Final Quote": 357.14117909735205,
+    "Final Base": 36.579805804218545,
+    "Symbol": "PEP.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5094.9576268597375,
+    "Combined Value in Base": 39.33722689051682,
+    "Total Trades": 37,
+    "Total Rebalances": 2,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

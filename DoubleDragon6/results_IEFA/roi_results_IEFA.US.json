@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 5.540216776804118,
+    "ROI in Benchmark": 16.422579269159673,
+    "Close Price": 81.88,
+    "Start Price": 70.33,
+    "Initial Money": 5000.0,
+    "Initial Base": 35.506269697103114,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5277.010838840206,
+    "Final Base": -3.247402347028583e-15,
+    "Symbol": "IEFA.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5277.010838840206,
+    "Combined Value in Base": 64.44810501758923,
+    "Total Trades": 19,
+    "Total Rebalances": 1,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

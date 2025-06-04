@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 96.55003984437401,
+    "ROI in Benchmark": -9.778237131237779,
+    "Close Price": 200.775,
+    "Start Price": 222.535,
+    "Initial Money": 5000.0,
+    "Initial Base": 11.21780489993718,
+    "Initial Quote": 2500.0,
+    "Final Quote": 1977.5331143374437,
+    "Final Base": 39.0983383283838,
+    "Symbol": "AMZN.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 9827.5019922187,
+    "Combined Value in Base": 48.9478370923606,
+    "Total Trades": 201,
+    "Total Rebalances": 3,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

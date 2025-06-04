@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 118.03661012999285,
+    "ROI in Benchmark": -29.443120531794804,
+    "Close Price": 0.22502,
+    "Start Price": 0.31892,
+    "Initial Money": 5000.0,
+    "Initial Base": 7850.032970138475,
+    "Initial Quote": 2500.0,
+    "Final Quote": 2311.113675822915,
+    "Final Base": 38177.570130107226,
+    "Symbol": "DOGE-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 10901.830506499642,
+    "Combined Value in Base": 48448.273515685905,
+    "Total Trades": 1079,
+    "Total Rebalances": 23,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}

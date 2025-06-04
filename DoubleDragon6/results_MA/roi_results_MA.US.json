@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 13.454951504879974,
+    "ROI in Benchmark": 6.723483059014706,
+    "Close Price": 564.77,
+    "Start Price": 529.19,
+    "Initial Money": 5000.0,
+    "Initial Base": 4.746670210847091,
+    "Initial Quote": 2500.0,
+    "Final Quote": 12.115365029502925,
+    "Final Base": 10.022898189022959,
+    "Symbol": "MA.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5672.747575243999,
+    "Combined Value in Base": 10.044350045583156,
+    "Total Trades": 58,
+    "Total Rebalances": 3,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

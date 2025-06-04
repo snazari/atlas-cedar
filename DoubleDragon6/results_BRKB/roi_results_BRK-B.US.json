@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 16.251023803736608,
+    "ROI in Benchmark": 10.323273971401,
+    "Close Price": 503.03,
+    "Start Price": 455.96,
+    "Initial Money": 5000.0,
+    "Initial Base": 5.492875740165006,
+    "Initial Quote": 2500.0,
+    "Final Quote": 5812.55119018683,
+    "Final Base": -8.881784197001252e-16,
+    "Symbol": "BRK-B.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 5812.55119018683,
+    "Combined Value in Base": 11.55507860403322,
+    "Total Trades": 36,
+    "Total Rebalances": 0,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

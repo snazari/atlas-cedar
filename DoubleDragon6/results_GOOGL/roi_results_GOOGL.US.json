@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 21.746670350334153,
+    "ROI in Benchmark": -11.758546672949052,
+    "Close Price": 168.55,
+    "Start Price": 191.01,
+    "Initial Money": 5000.0,
+    "Initial Base": 13.071622031434638,
+    "Initial Quote": 2500.0,
+    "Final Quote": 6087.333517516709,
+    "Final Base": -9.769962616701378e-15,
+    "Symbol": "GOOGL.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6087.333517516708,
+    "Combined Value in Base": 36.11589153080218,
+    "Total Trades": 101,
+    "Total Rebalances": 3,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

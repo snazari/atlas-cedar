@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 38.54284757560772,
+    "ROI in Benchmark": 5.755175898291545,
+    "Close Price": 450.02,
+    "Start Price": 425.53,
+    "Initial Money": 5000.0,
+    "Initial Base": 5.908489317451314,
+    "Initial Quote": 2500.0,
+    "Final Quote": 6927.142378780387,
+    "Final Base": -1.3322676295501878e-15,
+    "Symbol": "MSFT.US",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6927.142378780386,
+    "Combined Value in Base": 15.392965598818689,
+    "Total Trades": 81,
+    "Total Rebalances": 1,
+    "start date": "2025-01-02 09:30:00",
+    "end date": "2025-05-30 16:00:00"
+}

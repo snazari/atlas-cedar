@@ -1,0 +1,20 @@
+{
+    "ROI in Quote": 34.78242173235998,
+    "ROI in Benchmark": 15.845983142870432,
+    "Close Price": 108707.6,
+    "Start Price": 93838.04,
+    "Initial Money": 5000.0,
+    "Initial Base": 0.026677710527419404,
+    "Initial Quote": 2500.0,
+    "Final Quote": 0.0,
+    "Final Base": 0.061993099715364874,
+    "Symbol": "BTC-USD.CC",
+    "Start Date": "2025-01-01",
+    "End Date": "2025-05-31",
+    "Combined Value in Quote": 6739.121086617999,
+    "Combined Value in Base": 0.061993099715364874,
+    "Total Trades": 187,
+    "Total Rebalances": 6,
+    "start date": "2025-01-01 05:00:00",
+    "end date": "2025-05-31 04:00:00"
+}
