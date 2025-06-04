@@ -15,9 +15,9 @@ backgroundColor = "#0E1117"        # Dark background
 secondaryBackgroundColor = "#262730"  # Darker gray
 
 # Color used for almost all text
-#textColor = "#262730"
+textColor = "#262730"
 #textColor = "#1F2937"              # Dark gray
-textColor = "#FAFAFA"              # Light text
+#textColor = "#FAFAFA"              # Light text
 
 # Font family for all text in the app, except code blocks
 font = "sans serif"
