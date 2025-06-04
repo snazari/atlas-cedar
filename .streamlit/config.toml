@@ -1,0 +1,23 @@
+[theme]
+# Primary color
+#primaryColor = "#1f77b4"  # Change this to your preferred color
+primaryColor = "#DC2626"           # Professional red
+
+# Background color for the main content area
+#backgroundColor = "#ffffff"
+backgroundColor = "#FFFFFF"        # White
+
+# Background color for sidebar and most interactive widgets
+#secondaryBackgroundColor = "#f0f2f6"
+secondaryBackgroundColor = "#FEF2F2"  # Very light red tint
+
+# Color used for almost all text
+#textColor = "#262730"
+textColor = "#1F2937"              # Dark gray
+
+# Font family for all text in the app, except code blocks
+font = "sans serif"
+
+# Base theme
+base = "light" 
+
