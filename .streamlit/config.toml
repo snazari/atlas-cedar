@@ -27,7 +27,7 @@ textColor = "#064E3B"              # Dark green
 font = "sans serif"
 
 # Base theme
-#base = "light" 
-base = "dark"                      # Don't forget to change base theme
+base = "light" 
+#base = "dark"                      # Don't forget to change base theme
 
 
