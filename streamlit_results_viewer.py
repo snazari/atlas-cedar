@@ -231,31 +231,6 @@ def main():
             total_trades = df['Total Trades'].sum()
             st.metric("Total Trades", f"{total_trades:,}")
     
-    # Filters
-    st.header("Filters")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if 'Symbol' in df.columns:
-            symbols = st.multiselect(
-                "Filter by Symbol",
-                options=sorted(df['Symbol'].unique()),
-                default=None
-            )
-            if symbols:
-                df = df[df['Symbol'].isin(symbols)]
-    
-    with col2:
-        if 'ROI in Quote' in df.columns:
-            roi_range = st.slider(
-                "ROI Range (%)",
-                min_value=float(df['ROI in Quote'].min()),
-                max_value=float(df['ROI in Quote'].max()),
-                value=(float(df['ROI in Quote'].min()), float(df['ROI in Quote'].max())),
-                step=0.1
-            )
-            df = df[(df['ROI in Quote'] >= roi_range[0]) & (df['ROI in Quote'] <= roi_range[1])]
-    
     # Display the data
     st.header("Results Table")
     
@@ -268,28 +243,22 @@ def main():
         mime="text/csv"
     )
     
-    df.columns = df.columns.str.replace('ROI in Quote', 'ROI (Atlas Cedar)')
-    df.columns = df.columns.str.replace('ROI in Benchmark', 'ROI (Benchmark)')
-    df.columns = df.columns.str.replace('Combined Value in Quote', 'Combined Value (Quote)')
+    df.columns = df.columns.str.replace('ROI in Quote', 'Atlas Cedar ROI')
+    df.columns = df.columns.str.replace('ROI in Benchmark', 'Buy and Hold ROI')
+    df.columns = df.columns.str.replace('Combined Value in Quote', 'Final Value')
     df.columns = df.columns.str.replace('Combined Value in Base', 'Combined Value (Base)')
     df.columns = df.columns.str.replace('Initial Money', 'Initial Investment')
     df.columns = df.columns.str.replace('Total Trades', 'Total Trades')
     
-    # Display options
-    show_all_columns = st.checkbox("Show all columns", value=False)
-    
-    if not show_all_columns:
-        # Show only important columns by default
-        display_columns = [
-            col for col in [
-                'Symbol', 'ROI (Atlas Cedar)', 'ROI (Benchmark)',
-                'Initial Investment', 'Combined Value (Quote)',
-                'Start Date', 'End Date', 'Total Trades'
-            ] if col in df.columns
-        ]
-        display_df = df[display_columns]
-    else:
-        display_df = df
+    # Show only important columns
+    display_columns = [
+        col for col in [
+            'Symbol', 'Atlas Cedar ROI', 'Buy and Hold ROI',
+            'Initial Investment', 'Final Value',
+            'Start Date', 'End Date', 'Total Trades'
+        ] if col in df.columns
+    ]
+    display_df = df[display_columns]
     
     # Sort by ROI if available
     if 'ROI (Atlas Cedar)' in display_df.columns:
@@ -649,150 +618,6 @@ def main():
                     file_name=f"{period_type.lower()}_returns_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv"
                 )
-                
-                # Visualization of periodic returns
-                st.subheader(f"{period_type} Returns Chart")
-                
-                # Create a line chart for periodic returns
-                fig_returns = go.Figure()
-                
-                for col in pivot_df.columns:
-                    if col != 'Average':
-                        fig_returns.add_trace(go.Scatter(
-                            x=pivot_df.index,
-                            y=pivot_df[col],
-                            mode='lines+markers',
-                            name=col,
-                            line=dict(width=2),
-                            marker=dict(size=6)
-                        ))
-                
-                # Add average line
-                fig_returns.add_trace(go.Scatter(
-                    x=pivot_df.index,
-                    y=pivot_df['Average'],
-                    mode='lines',
-                    name='Average',
-                    line=dict(color='black', width=3, dash='dash')
-                ))
-                
-                # Add zero line
-                fig_returns.add_hline(y=0, line_dash="dot", line_color="gray")
-                
-                fig_returns.update_layout(
-                    height=500,
-                    title=f"{period_type} Returns Over Time",
-                    xaxis_title="Period End Date",
-                    yaxis_title="Return (%)",
-                    template="plotly_white",
-                    plot_bgcolor="white",
-                    paper_bgcolor="#f0f2f6",
-                    hovermode='x unified',
-                    legend=dict(
-                        orientation="v",
-                        yanchor="top",
-                        y=0.99,
-                        xanchor="left",
-                        x=1.01
-                    )
-                )
-                
-                st.plotly_chart(fig_returns, use_container_width=True)
-            
-            # Display Equity Curve Data as Table
-            st.header("Equity Curve Data Tables")
-            
-            # Option to view raw equity data
-            show_equity_tables = st.checkbox("Show equity curve data tables", value=False)
-            
-            if show_equity_tables:
-                # Create tabs for each symbol
-                if len(selected_curves) > 0:
-                    tabs = st.tabs(selected_curves)
-                    
-                    for idx, (tab, symbol) in enumerate(zip(tabs, selected_curves)):
-                        with tab:
-                            try:
-                                # Load and display equity data
-                                equity_data = pd.read_csv(equity_options[symbol])
-                                equity_data['Date'] = pd.to_datetime(equity_data['Date'])
-                                
-                                # Show file path
-                                st.caption(f"Source file: {equity_options[symbol]}")
-                                
-                                # Display summary info
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    st.metric("Total Days", len(equity_data))
-                                with col2:
-                                    st.metric("Date Range", f"{equity_data['Date'].min().strftime('%Y-%m-%d')} to {equity_data['Date'].max().strftime('%Y-%m-%d')}")
-                                with col3:
-                                    st.metric("Columns", len(equity_data.columns))
-                                
-                                # Format the dataframe for display
-                                display_equity = equity_data.copy()
-                                display_equity['Date'] = display_equity['Date'].dt.strftime('%Y-%m-%d')
-                                
-                                # Round numeric columns
-                                numeric_cols = display_equity.select_dtypes(include=['float64', 'int64']).columns
-                                for col in numeric_cols:
-                                    if col != 'Rebalance':
-                                        display_equity[col] = display_equity[col].round(2)
-                                
-                                # Display the table
-                                st.dataframe(display_equity, use_container_width=True, height=400)
-                                
-                                # Download button for individual equity curve
-                                csv_individual = display_equity.to_csv(index=False)
-                                st.download_button(
-                                    label=f"Download {symbol} equity curve",
-                                    data=csv_individual,
-                                    file_name=f"equity_curve_{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                                    mime="text/csv"
-                                )
-                            
-                            except Exception as e:
-                                st.error(f"Error loading data for {symbol}: {str(e)}")
-                
-                # Combined equity curves export
-                st.subheader("Export Combined Equity Curves")
-                
-                if st.button("Prepare Combined Equity Curves Export"):
-                    combined_data = []
-                    
-                    for symbol in selected_curves:
-                        try:
-                            equity_data = pd.read_csv(equity_options[symbol])
-                            equity_data['Symbol'] = symbol
-                            combined_data.append(equity_data)
-                        except Exception as e:
-                            st.warning(f"Could not include {symbol}: {str(e)}")
-                    
-                    if combined_data:
-                        combined_df = pd.concat(combined_data, ignore_index=True)
-                        
-                        # Reorder columns to put Symbol first
-                        cols = ['Symbol'] + [col for col in combined_df.columns if col != 'Symbol']
-                        combined_df = combined_df[cols]
-                        
-                        # Format dates
-                        if 'Date' in combined_df.columns:
-                            combined_df['Date'] = pd.to_datetime(combined_df['Date']).dt.strftime('%Y-%m-%d')
-                        
-                        # Show preview
-                        st.write("Preview of combined data (first 10 rows):")
-                        st.dataframe(combined_df.head(10), use_container_width=True)
-                        
-                        # Download button
-                        csv_combined = combined_df.to_csv(index=False)
-                        st.download_button(
-                            label="Download Combined Equity Curves CSV",
-                            data=csv_combined,
-                            file_name=f"combined_equity_curves_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv"
-                        )
-                        
-                        st.success(f"Combined {len(combined_df)} rows from {len(selected_curves)} equity curves")
     
     else:
         st.info("No equity curve files found. Run the backtest with the updated code to generate equity curve data.")
