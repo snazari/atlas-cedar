@@ -5,6 +5,9 @@ import os
 import glob
 from datetime import datetime
 import hashlib
+import sqlite3
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Configuration
 PASSWORD_HASH = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # Default: "password"
@@ -43,6 +46,303 @@ def check_password():
     else:
         # Password correct
         return True
+
+def get_portfolio_data(asset_name=None):
+    """Fetches portfolio data from the SQLite database."""
+    if not os.path.exists('portfolio_data.db'):
+        return pd.DataFrame()
+    
+    conn = sqlite3.connect('portfolio_data.db')
+    try:
+        # First check if multi-asset table exists
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='portfolio_data'")
+        multi_asset_exists = cursor.fetchone() is not None
+        
+        if multi_asset_exists:
+            # Use multi-asset table
+            if asset_name:
+                query = f"SELECT * FROM portfolio_data WHERE asset_name = '{asset_name}' ORDER BY timestamp ASC"
+            else:
+                query = "SELECT * FROM portfolio_data ORDER BY asset_name, timestamp ASC"
+            df = pd.read_sql_query(query, conn)
+        else:
+            # Fall back to old btc_balance table
+            df = pd.read_sql_query("SELECT * FROM btc_balance ORDER BY timestamp ASC", conn)
+            df['asset_name'] = 'BTC-USD'  # Add asset name column for compatibility
+        
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        return df
+    except Exception as e:
+        st.error(f"Database error: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+def get_available_assets():
+    """Get list of available assets in the database."""
+    if not os.path.exists('portfolio_data.db'):
+        return []
+    
+    conn = sqlite3.connect('portfolio_data.db')
+    try:
+        cursor = conn.cursor()
+        # Check if multi-asset table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='portfolio_data'")
+        if cursor.fetchone():
+            cursor.execute("SELECT DISTINCT asset_name FROM portfolio_data ORDER BY asset_name")
+            return [row[0] for row in cursor.fetchall()]
+        else:
+            # If only old table exists, return BTC-USD
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='btc_balance'")
+            if cursor.fetchone():
+                return ['BTC-USD']
+        return []
+    except:
+        return []
+    finally:
+        conn.close()
+
+def display_live_portfolio():
+    """Renders the live portfolio dashboard with support for multiple assets."""
+    st.header("Live Portfolio Monitor")
+
+    # Get available assets
+    available_assets = get_available_assets()
+    
+    if not available_assets:
+        st.info("No portfolio data found. Please run the `gmail_integration.py` script or import data using `import_asset_data.py`")
+        return
+    
+    # Asset selection
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        # Ensure both BTC-USD and ETH-USD are selected by default if they exist
+        default_selection = []
+        if 'BTC-USD' in available_assets:
+            default_selection.append('BTC-USD')
+        if 'ETH-USD' in available_assets:
+            default_selection.append('ETH-USD')
+        # If neither exist, just take first 2 available
+        if not default_selection:
+            default_selection = available_assets[:2]
+            
+        selected_assets = st.multiselect(
+            "Select assets to display:",
+            available_assets,
+            default=default_selection
+        )
+    with col2:
+        if st.button("Refresh Data"):
+            st.rerun()
+    
+    if not selected_assets:
+        st.warning("Please select at least one asset to display")
+        return
+    
+    # Display metrics for each selected asset
+    st.subheader("Portfolio Metrics Overview")
+    
+    # Create columns and display metrics for all selected assets
+    if selected_assets:
+        metrics_cols = st.columns(len(selected_assets))
+        
+        for idx, asset in enumerate(selected_assets):
+            asset_df = get_portfolio_data(asset)
+            if not asset_df.empty:
+                with metrics_cols[idx]:
+                    latest_data = asset_df.iloc[-1]
+                    latest_value = latest_data['current_value']
+                    
+                    # Handle initial_value - it might not exist in all data
+                    if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
+                        initial_value = latest_data['initial_value']
+                    else:
+                        initial_value = asset_df.iloc[0]['current_value']
+                    
+                    total_pl = latest_value - initial_value
+                    pl_percent = (total_pl / initial_value) * 100
+                    
+                    # Add icon based on asset
+                    if asset == "BTC-USD":
+                        asset_label = f"🟠 {asset}"
+                    elif asset == "ETH-USD":
+                        asset_label = f"🔵 {asset}"
+                    else:
+                        asset_label = f"📊 {asset}"
+                        
+                    st.metric(
+                        asset_label,
+                        f"${latest_value:,.2f}",
+                        f"${total_pl:+,.2f} ({pl_percent:+.2f}%)"
+                    )
+                    
+                    # Show fee if available
+                    if 'fee' in latest_data and pd.notna(latest_data['fee']) and latest_data['fee'] > 0:
+                        st.caption(f"Fee: ${latest_data['fee']:.2f}")
+                    
+                    last_updated = latest_data['timestamp'].strftime('%Y-%m-%d %H:%M')
+                    st.caption(f"Updated: {last_updated}")
+    
+    # Global chart options
+    st.subheader("Chart Settings")
+    col1, col2, col3 = st.columns([2, 2, 2])
+    with col1:
+        chart_type = st.selectbox("Chart Type", ["Absolute Values", "Normalized (Base 100)", "Percentage Change"])
+    with col2:
+        show_markers = st.checkbox("Show Markers", value=True)
+    with col3:
+        sampling_freq = st.selectbox("Frequency", ["Weekly", "Daily", "Hourly"], index=0)
+    
+    # Color palette
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+              '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+    
+    # Create a separate section for each asset
+    for idx, asset in enumerate(selected_assets):
+        st.divider()
+        
+        # Add colored header based on asset
+        if asset == "BTC-USD":
+            st.markdown(f"## 🟠 {asset} Portfolio Analysis")
+        elif asset == "ETH-USD":
+            st.markdown(f"## 🔵 {asset} Portfolio Analysis")
+        else:
+            st.markdown(f"## 📊 {asset} Portfolio Analysis")
+        
+        asset_df = get_portfolio_data(asset)
+        if not asset_df.empty:
+            # Create columns for this asset's specific info
+            info_col1, info_col2, info_col3, info_col4 = st.columns(4)
+            
+            # Calculate statistics for this asset
+            latest_data = asset_df.iloc[-1]
+            first_data = asset_df.iloc[0]
+            
+            with info_col1:
+                st.metric("Data Points", len(asset_df))
+            with info_col2:
+                date_range = f"{first_data['timestamp'].strftime('%Y-%m-%d')} to {latest_data['timestamp'].strftime('%Y-%m-%d')}"
+                st.metric("Date Range", date_range)
+            
+            # Calculate daily returns for volatility and Sharpe ratio
+            asset_df_copy = asset_df.set_index('timestamp')
+            daily_returns = asset_df_copy['current_value'].resample('D').last().pct_change().dropna()
+            
+            with info_col3:
+                # Calculate volatility (standard deviation of daily returns)
+                if len(daily_returns) > 0:
+                    volatility = daily_returns.std() * 100  # Convert to percentage
+                    st.metric("Daily Volatility", f"{volatility:.2f}%")
+                else:
+                    st.metric("Daily Volatility", "N/A")
+            
+            with info_col4:
+                # Calculate Sharpe Ratio (annualized)
+                if len(daily_returns) > 0 and daily_returns.std() > 0:
+                    # Annualize: multiply daily mean by sqrt(252) for trading days
+                    mean_return = daily_returns.mean()
+                    std_return = daily_returns.std()
+                    # Annualized Sharpe ratio
+                    sharpe_ratio = (mean_return / std_return) * (252 ** 0.5)
+                    st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+                else:
+                    st.metric("Sharpe Ratio", "N/A")
+            
+            # Create the chart for this specific asset
+            fig = go.Figure()
+            
+            # Set timestamp as index for resampling
+            asset_df = asset_df.set_index('timestamp')
+            
+            # Resample based on selected frequency
+            if sampling_freq == "Weekly":
+                resampled_df = asset_df[['current_value']].resample('W').last()
+                resampled_df = resampled_df.fillna(method='ffill')
+            elif sampling_freq == "Daily":
+                resampled_df = asset_df[['current_value']].resample('D').last()
+                resampled_df = resampled_df.fillna(method='ffill')
+            else:  # Hourly - use original data
+                resampled_df = asset_df[['current_value']]
+            
+            # Reset index to get timestamp back as column
+            resampled_df = resampled_df.reset_index()
+            x_values = resampled_df['timestamp']
+            
+            if chart_type == "Absolute Values":
+                y_values = resampled_df['current_value']
+                y_title = "Portfolio Value (USD)"
+            elif chart_type == "Normalized (Base 100)":
+                first_value = resampled_df['current_value'].iloc[0]
+                y_values = (resampled_df['current_value'] / first_value) * 100
+                y_title = "Normalized Value (Base = 100)"
+            else:  # Percentage Change
+                first_value = resampled_df['current_value'].iloc[0]
+                y_values = ((resampled_df['current_value'] - first_value) / first_value) * 100
+                y_title = "Percentage Change (%)"
+            
+            mode = 'lines+markers' if show_markers else 'lines'
+            
+            # Main trace
+            fig.add_trace(go.Scatter(
+                x=x_values,
+                y=y_values,
+                mode=mode,
+                name=asset,
+                line=dict(color=colors[idx % len(colors)], width=2),
+                marker=dict(size=6) if show_markers else None,
+                hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Value: %{y:.2f}<extra></extra>'
+            ))
+            
+            # Add min/max markers
+            min_idx = y_values.idxmin()
+            max_idx = y_values.idxmax()
+            
+            fig.add_trace(go.Scatter(
+                x=[x_values.iloc[min_idx]],
+                y=[y_values.iloc[min_idx]],
+                mode='markers+text',
+                name='Min',
+                marker=dict(color='red', size=10, symbol='triangle-down'),
+                text=[f"Min: {y_values.iloc[min_idx]:.2f}"],
+                textposition="bottom center",
+                showlegend=False
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=[x_values.iloc[max_idx]],
+                y=[y_values.iloc[max_idx]],
+                mode='markers+text',
+                name='Max',
+                marker=dict(color='green', size=10, symbol='triangle-up'),
+                text=[f"Max: {y_values.iloc[max_idx]:.2f}"],
+                textposition="top center",
+                showlegend=False
+            ))
+            
+            fig.update_layout(
+                title=f"{asset} - {chart_type} ({sampling_freq})",
+                xaxis_title="Date",
+                yaxis_title=y_title,
+                template="plotly_white",
+                hovermode='x unified',
+                height=400,
+                showlegend=False
+            )
+            
+            # Add grid
+            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Show data table in an expander
+            with st.expander(f"View {asset} Raw Data"):
+                # Show last 10 records
+                display_df = resampled_df.tail(10).copy()
+                display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
+                display_df.columns = ['Date', 'Value']
+                st.dataframe(display_df, use_container_width=True)
 
 def find_results_directories(base_path="."):
     """Find all directories matching the pattern 'results_*' or 'results'."""
@@ -128,50 +428,27 @@ def format_dataframe(df):
 
 def main():
     st.set_page_config(
-        page_title="Atlas Cedar Backtest Results Viewer",
+        page_title="Atlas Cedar Dashboard",
         page_icon="📊",
         layout="wide"
     )
-    
-    # Set theme to light mode
-    st.markdown("""
-    <style>
-        /* Custom CSS for light theme */
-        .stApp {
-            background-color: #f0f2f6;
-        }
-        
-        /* Make dataframes more readable */
-        .dataframe {
-            background-color: white !important;
-        }
-        
-        /* Adjust sidebar */
-        section[data-testid="stSidebar"] {
-            background-color: #e6e9ef;
-        }
-        
-        /* Headers styling */
-        h1, h2, h3 {
-            color: #262730;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    st.title("Atlas Cedar Backtest Results")
-    
-    # Check password
+
+    st.title("Atlas Cedar Dashboard - Live Results")
+
     if not check_password():
         st.stop()
     
-    # Add logout button
-    col1, col2 = st.columns([6, 1])
-    with col2:
-        if st.button("Logout"):
-            for key in st.session_state.keys():
-                del st.session_state[key]
-            st.rerun()
+    # Only show Live Portfolio for now (backtest functionality preserved but hidden)
+    display_live_portfolio()
     
+    # Commented out tab navigation - can be re-enabled later
+    # tab1, tab2 = st.tabs(["Backtest Results", "Live Portfolio"])
+    # with tab1:
+    #     display_backtest_results()
+    # with tab2:
+    #     display_live_portfolio()
+
+def display_backtest_results():
     # Find all results directories
     st.sidebar.header("Settings")
     base_path = st.sidebar.text_input("Base search path", value=".")
@@ -309,8 +586,6 @@ def main():
         
         if selected_curves:
             # Load and plot the selected equity curves
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
             
             # Create figure
             fig = make_subplots(
@@ -621,6 +896,7 @@ def main():
     
     else:
         st.info("No equity curve files found. Run the backtest with the updated code to generate equity curve data.")
+
 
 if __name__ == "__main__":
     main() 

@@ -1,5 +1,20 @@
-venv/
-.venv/
-__pychache__/
+# OAuth credentials
+token.json
+credentials.json
+
+# SQLite database
+portfolio_data.db
+
+# Python cache
+__pycache__/
 *.pyc
-.DS_Store
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# IDE files
+.idea/
+.vscode/
