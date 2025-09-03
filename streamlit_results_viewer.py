@@ -204,9 +204,9 @@ def display_live_portfolio():
         
         # Add colored header based on asset
         if asset == "BTC-USD":
-            st.markdown(f"## 🟠 {asset} Portfolio Analysis")
+            st.markdown(f"## 🟠 {asset} Algorithm 1b")
         elif asset == "ETH-USD":
-            st.markdown(f"## 🔵 {asset} Portfolio Analysis")
+            st.markdown(f"## 🔵 {asset} Algorithm 2")
         else:
             st.markdown(f"## 📊 {asset} Portfolio Analysis")
         
