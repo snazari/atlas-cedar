@@ -117,15 +117,17 @@ def display_live_portfolio():
     # Asset selection
     col1, col2 = st.columns([3, 1])
     with col1:
-        # Ensure both BTC-USD and ETH-USD are selected by default if they exist
+        # Ensure BTC-USD, BTC1, and ETH-USD are selected by default if they exist
         default_selection = []
         if 'BTC-USD' in available_assets:
             default_selection.append('BTC-USD')
+        if 'BTC1' in available_assets:
+            default_selection.append('BTC1')
         if 'ETH-USD' in available_assets:
             default_selection.append('ETH-USD')
-        # If neither exist, just take first 2 available
+        # If none exist, just take first 3 available
         if not default_selection:
-            default_selection = available_assets[:2]
+            default_selection = available_assets[:3]
             
         selected_assets = st.multiselect(
             "Select assets to display:",
@@ -166,6 +168,8 @@ def display_live_portfolio():
                     # Add icon based on asset
                     if asset == "BTC-USD":
                         asset_label = f"🟠 {asset}"
+                    elif asset == "BTC1":
+                        asset_label = f"⚡ {asset}"
                     elif asset == "ETH-USD":
                         asset_label = f"🔵 {asset}"
                     else:
@@ -205,6 +209,8 @@ def display_live_portfolio():
         # Add colored header based on asset
         if asset == "BTC-USD":
             st.markdown(f"## 🟠 {asset} Algorithm 1b")
+        elif asset == "BTC1":
+            st.markdown(f"## ⚡ {asset} Algorithm 1a")
         elif asset == "ETH-USD":
             st.markdown(f"## 🔵 {asset} Algorithm 2")
         else:

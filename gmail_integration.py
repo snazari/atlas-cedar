@@ -16,14 +16,29 @@ TOKEN_FILE = 'token.json'
 CREDENTIALS_FILE = 'credentials.json'
 DB_FILE = 'portfolio_data.db'
 SENDER_EMAIL = 'mfarsh@gmail.com'
-EMAIL_SUBJECT = 'dataframe email'
+EMAIL_SUBJECT = 'CSV EmailBTC1'  # Processing BTC1 data
 
 def init_db():
     """
-    Initializes the SQLite database and creates the btc_balance table if it doesn't exist.
+    Initializes the SQLite database and creates the portfolio_data table if it doesn't exist.
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    
+    # Create the multi-asset portfolio table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS portfolio_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            asset_name TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            current_value REAL NOT NULL,
+            initial_value REAL,
+            fee REAL,
+            UNIQUE(asset_name, timestamp)
+        )
+    ''')
+    
+    # Keep the old table for backward compatibility
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS btc_balance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,19 +48,34 @@ def init_db():
             fee REAL NOT NULL
         )
     ''')
+    
     conn.commit()
     conn.close()
 
-def insert_balance_data(timestamp, current_value, initial_value, fee):
+def insert_balance_data(timestamp, current_value, initial_value, fee, asset_name='BTC1'):
     """
-    Inserts a new record into the btc_balance table.
+    Inserts a new record into the portfolio_data table for BTC1.
+    Also maintains backward compatibility with btc_balance table.
     """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    
+    # Insert into the new multi-asset table
+    try:
+        cursor.execute('''
+            INSERT OR IGNORE INTO portfolio_data 
+            (asset_name, timestamp, current_value, initial_value, fee)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (asset_name, timestamp, current_value, initial_value, fee))
+    except sqlite3.Error as e:
+        print(f"Warning: Could not insert into portfolio_data: {e}")
+    
+    # Also insert into old table for backward compatibility
     cursor.execute('''
         INSERT INTO btc_balance (timestamp, current_value, initial_value, fee)
         VALUES (?, ?, ?, ?)
     ''', (timestamp, current_value, initial_value, fee))
+    
     conn.commit()
     conn.close()
 
@@ -73,8 +103,13 @@ def fetch_and_process_emails(service):
     Fetches unread emails from the specified sender and subject,
     parses them, and stores the data in the database.
     """
-    # Search for emails containing 'dataframe' and 'email' in subject (case-insensitive)
-    query = f"from:{SENDER_EMAIL} subject:dataframe subject:email is:unread"
+    # Search for emails with the exact subject pattern
+    # This will find "CSV EmailBTC-USD" emails
+    # Alternative: Remove 'subject:EmailBTC-USD' to see ALL unread emails from sender
+    query = f'from:{SENDER_EMAIL} subject:EmailBTC-USD is:unread'
+    # Debug: Uncomment next line to see ALL unread from sender
+    # query = f'from:{SENDER_EMAIL} is:unread'
+    print(f"Searching with query: {query}")
     
     # Fetch all pages of results
     messages = []
@@ -90,12 +125,15 @@ def fetch_and_process_emails(service):
                 userId='me', q=query, maxResults=500
             ).execute()
         
-        messages.extend(results.get('messages', []))
+        batch = results.get('messages', [])
+        messages.extend(batch)
+        print(f"  Found {len(batch)} messages in this batch")
         
         page_token = results.get('nextPageToken')
         if not page_token:
             break
     
+    print(f"Total messages found: {len(messages)}")
     if not messages:
         print("No new emails found.")
     else:
@@ -115,11 +153,11 @@ def fetch_and_process_emails(service):
                 if parsed_data:
                     insert_balance_data(
                         timestamp,
-                        parsed_data['current_value'],
+                        parsed_data['BTC1 value is'],
                         parsed_data['initial_value'],
                         parsed_data['fee']
                     )
-                    print(f"[{i}/{len(messages)}] Processed email from {timestamp}")
+                    print(f"[{i}/{len(messages)}] Processed BTC1 email from {timestamp}")
                     # Mark email as read
                     service.users().messages().modify(
                         userId='me', id=message['id'], body={'removeLabelIds': ['UNREAD']}
@@ -135,15 +173,29 @@ def fetch_and_process_emails(service):
 def parse_email_body(body):
     """
     Parses the email body to extract portfolio metrics using regular expressions.
+    Handles both BTC1 and BTC-USD email formats.
     """
-    pattern = re.compile(
+    # Try BTC1 format first
+    pattern_btc1 = re.compile(
+        r"current portfolio.*?BTC1 value is:\s*([\d\.]+)\s*"
+        r"initial value is:\s*([\d\.]+)\s*"
+        r"fee is:?\s*([\d\.]+)",
+        re.IGNORECASE | re.DOTALL
+    )
+    
+    # Also try the original format (for BTC-USD emails)
+    pattern_btc_usd = re.compile(
         r"current portfolio.*?value is:\s*([\d\.]+)\s*"
         r"initial value is:\s*([\d\.]+)\s*"
         r"fee is:?\s*([\d\.]+)",
         re.IGNORECASE | re.DOTALL
     )
     
-    match = pattern.search(body)
+    # Try BTC1 pattern first
+    match = pattern_btc1.search(body)
+    if not match:
+        # Fall back to BTC-USD pattern
+        match = pattern_btc_usd.search(body)
     
     if match:
         try:
@@ -151,7 +203,7 @@ def parse_email_body(body):
             initial_value = float(match.group(2))
             fee = float(match.group(3))
             return {
-                'current_value': current_value,
+                'BTC1 value is': current_value,
                 'initial_value': initial_value,
                 'fee': fee
             }
