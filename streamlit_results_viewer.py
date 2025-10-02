@@ -117,17 +117,8 @@ def display_live_portfolio():
     # Asset selection
     col1, col2 = st.columns([3, 1])
     with col1:
-        # Ensure BTC-USD, BTC1, and ETH-USD are selected by default if they exist
-        default_selection = []
-        if 'BTC-USD' in available_assets:
-            default_selection.append('BTC-USD')
-        if 'BTC1' in available_assets:
-            default_selection.append('BTC1')
-        if 'ETH-USD' in available_assets:
-            default_selection.append('ETH-USD')
-        # If none exist, just take first 3 available
-        if not default_selection:
-            default_selection = available_assets[:3]
+        # Select all available assets by default (or first 5 if more than 5)
+        default_selection = available_assets if len(available_assets) <= 5 else available_assets[:5]
             
         selected_assets = st.multiselect(
             "Select assets to display:",
@@ -166,12 +157,14 @@ def display_live_portfolio():
                     pl_percent = (total_pl / initial_value) * 100
                     
                     # Add icon based on asset
-                    if asset == "BTC-USD":
+                    if "BTC" in asset:
                         asset_label = f"🟠 {asset}"
-                    elif asset == "BTC1":
-                        asset_label = f"⚡ {asset}"
-                    elif asset == "ETH-USD":
+                    elif "ETH" in asset:
                         asset_label = f"🔵 {asset}"
+                    elif "XRP" in asset:
+                        asset_label = f"🔵 {asset}"
+                    elif "SOL" in asset:
+                        asset_label = f"🟣 {asset}"
                     else:
                         asset_label = f"📊 {asset}"
                         
@@ -196,7 +189,7 @@ def display_live_portfolio():
     with col2:
         show_markers = st.checkbox("Show Markers", value=True)
     with col3:
-        sampling_freq = st.selectbox("Frequency", ["Weekly", "Daily", "Hourly"], index=0)
+        sampling_freq = st.selectbox("Frequency", ["Weekly", "Daily", "Hourly"], index=2)
     
     # Color palette
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
@@ -207,12 +200,14 @@ def display_live_portfolio():
         st.divider()
         
         # Add colored header based on asset
-        if asset == "BTC-USD":
-            st.markdown(f"## 🟠 {asset} Algorithm 1b")
-        elif asset == "BTC1":
-            st.markdown(f"## ⚡ {asset} Algorithm 1a")
-        elif asset == "ETH-USD":
-            st.markdown(f"## 🔵 {asset} Algorithm 2")
+        if "BTC" in asset:
+            st.markdown(f"## 🟠 {asset} - Bitcoin")
+        elif "ETH" in asset:
+            st.markdown(f"## 🔵 {asset} - Ethereum")
+        elif "XRP" in asset:
+            st.markdown(f"## 🔵 {asset} - Ripple")
+        elif "SOL" in asset:
+            st.markdown(f"## 🟣 {asset} - Solana")
         else:
             st.markdown(f"## 📊 {asset} Portfolio Analysis")
         
