@@ -129,25 +129,29 @@ def generate_ai_summary(asset_name, metrics):
         model = genai.GenerativeModel('gemini-2.5-pro')  # Updated model name
         
         # Construct prompt with metrics
+        market_name = metrics.get('market_name', 'Market')
         prompt = f"""You are a financial analyst. Provide a concise one-paragraph summary (3-4 sentences) of this cryptocurrency trading algorithm's performance.
 
 Asset: {asset_name}
-Metrics:
-- Total Gain: {metrics.get('gain_percent', 'N/A')}%
-- Current Value: ${metrics.get('current_value', 'N/A'):,.2f}
-- Initial Value: ${metrics.get('initial_value', 'N/A'):,.2f}
+
+Key Performance Metrics:
+- Total Gain: {metrics.get('gain_percent', 'N/A'):.2f}% (First to Last Portfolio Value)
+- Initial Drawdown: {metrics.get('dd_init_percent', 'N/A'):.2f}% (Maximum loss from initial value)
+- Annualized Alpha: {metrics.get('alpha_percent', 'N/A')} (Excess return over {market_name})
+- Beta vs {market_name}: {metrics.get('beta', 'N/A')} (Market sensitivity)
+- Current Portfolio Value: ${metrics.get('current_value', 'N/A'):,.2f}
+- Initial Portfolio Value: ${metrics.get('initial_value', 'N/A'):,.2f}
 - Sharpe Ratio: {metrics.get('sharpe_ratio', 'N/A')}
-- Alpha (Annualized): {metrics.get('alpha', 'N/A')}
-- Beta: {metrics.get('beta', 'N/A')}
-- Max Drawdown from Initial: {metrics.get('dd_init_percent', 'N/A')}%
-- Data Points: {metrics.get('data_points', 'N/A')}
 - Date Range: {metrics.get('date_range', 'N/A')}
+- Data Points: {metrics.get('data_points', 'N/A')}
 
 Provide a professional analysis focusing on:
-1. Overall performance assessment
-2. Risk-adjusted returns (Sharpe ratio interpretation)
-3. Market sensitivity (Alpha/Beta interpretation)
-4. Key strengths or concerns
+1. Overall performance (total gain and how it compares to the market)
+2. Be sure to compare the total gain to the market performance
+3. Risk profile (initial drawdown and what it means)
+4. Alpha generation (risk-adjusted excess returns)
+5. Market correlation (beta interpretation - higher/lower volatility than {market_name})
+6. Key strengths or concerns
 
 Keep it concise and actionable."""
         
@@ -193,7 +197,7 @@ def display_live_portfolio():
     # ═══════════════════════════════════════════════════════════════════════════
     
     st.markdown("---")
-    st.markdown("## 💼 Portfolio Summary")
+    st.markdown("## Portfolio Summary")
     
     # Calculate portfolio-wide statistics
     portfolio_stats = []
@@ -206,25 +210,23 @@ def display_live_portfolio():
             latest_data = asset_df.iloc[-1]
             first_data = asset_df.iloc[0]
             
-            current_value = latest_data['current_value']
-            if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
-                initial_value = latest_data['initial_value']
-            else:
-                initial_value = first_data['current_value']
+            # Use first and last portfolio values (current_value) for gain calculation
+            first_portfolio_value = first_data['current_value']
+            last_portfolio_value = latest_data['current_value']
             
-            gain = current_value - initial_value
-            gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
+            gain = last_portfolio_value - first_portfolio_value
+            gain_percent = (gain / first_portfolio_value) * 100 if first_portfolio_value > 0 else 0
             
             portfolio_stats.append({
                 'asset': asset,
-                'current_value': current_value,
-                'initial_value': initial_value,
+                'current_value': last_portfolio_value,
+                'initial_value': first_portfolio_value,
                 'gain': gain,
                 'gain_percent': gain_percent
             })
             
-            total_current_value += current_value
-            total_initial_value += initial_value
+            total_current_value += last_portfolio_value
+            total_initial_value += first_portfolio_value
     
     # Calculate overall portfolio metrics
     total_gain = total_current_value - total_initial_value
@@ -240,7 +242,7 @@ def display_live_portfolio():
     
     with summary_col1:
         st.metric(
-            "💰 Total Portfolio Value",
+            "Total Portfolio Value",
             f"${total_current_value:,.2f}",
             f"${total_gain:+,.2f} ({total_gain_percent:+.2f}%)"
         )
@@ -248,7 +250,7 @@ def display_live_portfolio():
     with summary_col2:
         if portfolio_stats:
             st.metric(
-                "🏆 Best Performer",
+                "Best Performer",
                 best_performer['asset'],
                 f"{best_performer['gain_percent']:+.2f}%"
             )
@@ -256,7 +258,7 @@ def display_live_portfolio():
     with summary_col3:
         if portfolio_stats:
             st.metric(
-                "📉 Worst Performer",
+                "Worst Performer",
                 worst_performer['asset'],
                 f"{worst_performer['gain_percent']:+.2f}%"
             )
@@ -267,7 +269,17 @@ def display_live_portfolio():
     # TABBED INTERFACE
     # ═══════════════════════════════════════════════════════════════════════════
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "📈 Detailed Charts", "📊 Statistics", "🗃️ Raw Data", "📉 Beta Analysis"])
+    # Custom CSS for larger tab font
+    st.markdown("""
+        <style>
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+            font-size: 40px;
+            font-weight: 600;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["Overview", "Equity Curves", "Statistics", "Raw Data", "Beta Analysis"])
     
     # ═══════════════════════════════════════════════════════════════════════════
     # TAB 1: OVERVIEW
@@ -284,16 +296,14 @@ def display_live_portfolio():
                 if not asset_df.empty:
                     with metrics_cols[idx]:
                         latest_data = asset_df.iloc[-1]
-                        latest_value = latest_data['current_value']
+                        first_data = asset_df.iloc[0]
                         
-                        # Handle initial_value - it might not exist in all data
-                        if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
-                            initial_value = latest_data['initial_value']
-                        else:
-                            initial_value = asset_df.iloc[0]['current_value']
+                        # Use first and last portfolio values for gain calculation
+                        first_portfolio_value = first_data['current_value']
+                        last_portfolio_value = latest_data['current_value']
                         
-                        total_pl = latest_value - initial_value
-                        pl_percent = (total_pl / initial_value) * 100
+                        total_pl = last_portfolio_value - first_portfolio_value
+                        pl_percent = (total_pl / first_portfolio_value) * 100
                         
                         # Add icon based on asset
                         if "BTC" in asset:
@@ -309,7 +319,7 @@ def display_live_portfolio():
                             
                         st.metric(
                             asset_label,
-                            f"${latest_value:,.2f}",
+                            f"${last_portfolio_value:,.2f}",
                             f"${total_pl:+,.2f} ({pl_percent:+.2f}%)"
                         )
                         
@@ -322,8 +332,8 @@ def display_live_portfolio():
         
         # AI Summary Section - Display below asset cards
         st.markdown("---")
-        st.markdown("### 🤖 AI Performance Analysis")
-        st.markdown("*Click the button below each asset to generate an AI-powered performance summary*")
+        st.markdown("### Key Performance Metrics")
+        #st.markdown("*Click the button below each asset to generate an AI-powered performance summary*")
         
         # Create individual sections for each asset's AI summary
         for asset in selected_assets:
@@ -333,31 +343,34 @@ def display_live_portfolio():
                     # Asset header
                     if "BTC" in asset:
                         st.markdown(f"#### 🟠 {asset}")
+                        market_name = "BTC"
                     elif "ETH" in asset:
                         st.markdown(f"#### 🔵 {asset}")
+                        market_name = "ETH"
                     elif "XRP" in asset:
                         st.markdown(f"#### 🔵 {asset}")
+                        market_name = "XRP"
                     elif "SOL" in asset:
                         st.markdown(f"#### 🟣 {asset}")
+                        market_name = "SOL"
                     else:
                         st.markdown(f"#### 📊 {asset}")
+                        market_name = "Market"
                     
                     # Calculate metrics for AI summary
                     latest_data = asset_df.iloc[-1]
                     first_data = asset_df.iloc[0]
                     
-                    current_value = latest_data['current_value']
-                    if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
-                        initial_value = latest_data['initial_value']
-                    else:
-                        initial_value = first_data['current_value']
+                    # 1. Calculate gain using first and last portfolio_value (current_value)
+                    first_portfolio_value = first_data['current_value']
+                    last_portfolio_value = latest_data['current_value']
+                    gain = last_portfolio_value - first_portfolio_value
+                    gain_percent = (gain / first_portfolio_value) * 100 if first_portfolio_value > 0 else 0
                     
-                    gain = current_value - initial_value
-                    gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
-                    
-                    min_val = asset_df['current_value'].min()
-                    dd_init = min_val - first_data['current_value']
-                    dd_init_percent = (dd_init / first_data['current_value']) * 100
+                    # 2. Calculate initial drawdown using first portfolio_value and minimum
+                    min_portfolio_value = asset_df['current_value'].min()
+                    dd_init = min_portfolio_value - first_portfolio_value
+                    dd_init_percent = (dd_init / first_portfolio_value) * 100 if first_portfolio_value > 0 else 0
                     
                     date_range = f"{first_data['timestamp'].strftime('%Y-%m-%d')} to {latest_data['timestamp'].strftime('%Y-%m-%d')}"
                     
@@ -367,12 +380,24 @@ def display_live_portfolio():
                     
                     sharpe_value = "N/A"
                     if len(hourly_returns) > 0 and hourly_returns.std() > 0:
-                        mean_return = hourly_returns.mean()
-                        std_return = hourly_returns.std()
-                        sharpe_value = f"{(mean_return / std_return) * (252 ** 0.5):.2f}"
+                        # Use portfolio returns for Sharpe calculation
+                        portfolio_returns = asset_df_copy['current_value'].pct_change().dropna()
+                        
+                        # Calculate periods per year based on data frequency
+                        dt_index = portfolio_returns.index
+                        if len(dt_index) > 1:
+                            avg_seconds = (dt_index[-1] - dt_index[0]).total_seconds() / (len(dt_index) - 1)
+                            periods_per_year = (365.25 * 24 * 3600) / avg_seconds
+                            annualization_factor = np.sqrt(periods_per_year)
+                            
+                            sharpe_ratio = np.mean(portfolio_returns) / np.std(portfolio_returns, ddof=1) if np.std(portfolio_returns, ddof=1) != 0 else 0
+                            sharpe_ratio_annual = sharpe_ratio * annualization_factor
+                            sharpe_value = f"{sharpe_ratio_annual:.2f}"
                     
+                    # 3 & 4. Calculate annualized alpha and beta with respect to market
                     alpha_value = "N/A"
                     beta_value = "N/A"
+                    alpha_percent = "N/A"
                     try:
                         df_capm = asset_df.copy()
                         df_capm = df_capm.reset_index()
@@ -396,21 +421,69 @@ def display_live_portfolio():
                                 periods_per_year = (365.25 * 24 * 3600) / avg_seconds
                                 alpha_annualized = alpha * periods_per_year
                                 alpha_value = f"{alpha_annualized:.4f}"
+                                alpha_percent = f"{alpha_annualized * 100:.2f}%"
                                 beta_value = f"{beta:.4f}"
                     except:
                         pass
                     
                     metrics_dict = {
                         'gain_percent': gain_percent,
-                        'current_value': current_value,
-                        'initial_value': initial_value,
+                        'current_value': last_portfolio_value,
+                        'initial_value': first_portfolio_value,
                         'sharpe_ratio': sharpe_value,
                         'alpha': alpha_value,
+                        'alpha_percent': alpha_percent,
                         'beta': beta_value,
                         'dd_init_percent': dd_init_percent,
                         'data_points': len(asset_df),
-                        'date_range': date_range
+                        'date_range': date_range,
+                        'market_name': market_name
                     }
+                    
+                    # Display key parameters prominently
+                    #st.markdown("##### Key Performance Metrics")
+                    
+                    metric_col1, metric_col2, metric_col3, metric_col4, metric_col5 = st.columns(5)
+                    
+                    with metric_col1:
+                        st.metric(
+                            "Total Gain",
+                            f"{gain_percent:.2f}%",
+                            delta=f"${gain:,.2f}",
+                            help="Percentage gain from first to last portfolio value"
+                        )
+                    
+                    with metric_col2:
+                        st.metric(
+                            "Initial Drawdown",
+                            f"{dd_init_percent:.2f}%",
+                            delta=f"${dd_init:,.2f}",
+                            delta_color="inverse",
+                            help="Maximum drawdown from initial portfolio value"
+                        )
+                    
+                    with metric_col3:
+                        st.metric(
+                            "Annualized Alpha",
+                            alpha_percent if alpha_percent != "N/A" else "N/A",
+                            help="Risk-adjusted excess return over market (annualized)"
+                        )
+                    
+                    with metric_col4:
+                        st.metric(
+                            f"Beta vs {market_name}",
+                            beta_value if beta_value != "N/A" else "N/A",
+                            help=f"Portfolio sensitivity to {market_name} price movements"
+                        )
+                    
+                    with metric_col5:
+                        st.metric(
+                            "Sharpe Ratio",
+                            sharpe_value if sharpe_value != "N/A" else "N/A",
+                            help="Risk-adjusted return (annualized)"
+                        )
+                    
+                    st.markdown("")
                     
                     # Generate AI summary button
                     if st.button(f"🤖 Generate AI Summary", key=f"ai_summary_overview_{asset}"):
@@ -471,7 +544,7 @@ def display_live_portfolio():
                 hourly_returns = asset_df_copy['current_value'].resample('h').last().pct_change().dropna()
                 
                 # === FIRST ROW OF METRICS ===
-                st.markdown("### 📊 Key Metrics")
+                st.markdown("### Key Metrics")
                 row1_col1, row1_col2, row1_col3 = st.columns(3)
                 
                 with row1_col1:
@@ -485,7 +558,7 @@ def display_live_portfolio():
                     st.metric("Gain", f"{gain_percent:.2f}%")
                 
                 # === SECOND ROW OF METRICS ===
-                st.markdown("### 📈 Performance Indicators")
+                st.markdown("### Performance Indicators")
                 row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
                 
                 with row2_col1:
@@ -676,14 +749,12 @@ def display_live_portfolio():
                 latest_data = asset_df.iloc[-1]
                 first_data = asset_df.iloc[0]
                 
-                current_value = latest_data['current_value']
-                if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
-                    initial_value = latest_data['initial_value']
-                else:
-                    initial_value = first_data['current_value']
+                # Use first and last portfolio values for gain calculation
+                first_portfolio_value = first_data['current_value']
+                last_portfolio_value = latest_data['current_value']
                 
-                gain = current_value - initial_value
-                gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
+                gain = last_portfolio_value - first_portfolio_value
+                gain_percent = (gain / first_portfolio_value) * 100 if first_portfolio_value > 0 else 0
                 
                 min_val = asset_df['current_value'].min()
                 max_val = asset_df['current_value'].max()
@@ -691,8 +762,8 @@ def display_live_portfolio():
                 
                 stats_data.append({
                     'Asset': asset,
-                    'Current Value': f"${current_value:,.2f}",
-                    'Initial Value': f"${initial_value:,.2f}",
+                    'Current Value': f"${last_portfolio_value:,.2f}",
+                    'Initial Value': f"${first_portfolio_value:,.2f}",
                     'Gain': f"${gain:+,.2f}",
                     'Gain %': f"{gain_percent:+.2f}%",
                     'Min': f"${min_val:,.2f}",
@@ -801,7 +872,7 @@ def display_live_portfolio():
                     # PERFORMANCE COMPARISON (TOP SECTION)
                     # ========================================================================
                     st.markdown("")
-                    st.markdown("## 🏆 Performance Comparison")
+                    st.markdown("## Performance Comparison")
                     st.markdown("*Strategy vs Market Total Returns*")
                     
                     # Large prominent metrics for performance comparison
@@ -809,14 +880,14 @@ def display_live_portfolio():
                     
                     with perf_col1:
                         st.metric(
-                            "📈 Strategy Total Gain",
+                            "Strategy Total Gain",
                             f"{perf_results['strategy_gain']:.2%}",
                             help="Total return of the strategy over the period"
                         )
                     
                     with perf_col2:
                         st.metric(
-                            "📊 Market Total Gain",
+                            "Market Total Gain",
                             f"{perf_results['market_gain']:.2%}",
                             help="Total return of the market over the period"
                         )
@@ -836,71 +907,32 @@ def display_live_portfolio():
                     # ========================================================================
                     # CORE BETA & ALPHA METRICS
                     # ========================================================================
-                    st.markdown("## 📊 Core Beta & Alpha Metrics")
+                    st.markdown("## Core Beta & Alpha Metrics")
                     
                     # Beta metrics section
                     st.markdown("#### Beta Analysis")
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric(
-                            "Beta (β)",
-                            f"{beta_results['beta']:.4f}",
-                            help="Sensitivity to market movements. β>1 means more volatile than market"
-                        )
-                        st.caption(f"95% CI: [{beta_results['beta_ci_lower']:.4f}, {beta_results['beta_ci_upper']:.4f}]")
-                    
-                    with col2:
-                        st.metric(
-                            "R-squared",
-                            f"{beta_results['r_squared']:.4f}",
-                            help="Proportion of variance explained by market"
-                        )
-                        st.caption(f"Correlation: {beta_results['correlation']:.4f}")
-                    
-                    with col3:
-                        st.metric(
-                            "Observations",
-                            f"{beta_results['n_observations']:,}",
-                            help="Number of data points used in analysis"
-                        )
-                        st.caption(f"Periods/year: {beta_results['periods_per_year']:,}")
+                    st.metric(
+                        "Beta (β)",
+                        f"{beta_results['beta']:.4f}",
+                        help="Sensitivity to market movements. β>1 means more volatile than market"
+                    )
+                    st.caption(f"95% CI: [{beta_results['beta_ci_lower']:.4f}, {beta_results['beta_ci_upper']:.4f}]")
                     
                     # Alpha metrics section
                     st.markdown("")
-                    st.markdown("#### Alpha Metrics (Excess Returns)")
-                    alpha_col1, alpha_col2, alpha_col3 = st.columns(3)
-                    
-                    with alpha_col1:
-                        st.metric(
-                            "Regular Alpha",
-                            f"{beta_results['regular_alpha_annual']:.2%}",
-                            help="Simple excess return over market (annualized)"
-                        )
-                        st.caption(f"Per period: {beta_results['regular_alpha']:.6f}")
-                    
-                    with alpha_col2:
-                        st.metric(
-                            "Jensen's Alpha",
-                            f"{beta_results['jensens_alpha_annual']:.2%}",
-                            help="CAPM-based alpha (risk-adjusted, annualized)"
-                        )
-                        st.caption(f"Per period: {beta_results['jensens_alpha']:.6f}")
-                    
-                    with alpha_col3:
-                        st.metric(
-                            "Regression Alpha",
-                            f"{beta_results['alpha_ols_annual']:.2%}",
-                            help="OLS regression intercept (annualized)"
-                        )
-                        st.caption(f"Per period: {beta_results['alpha_ols']:.6f}")
+                    st.markdown("#### Alpha Analysis")
+                    st.metric(
+                        "Annualized Alpha",
+                        f"{beta_results['alpha_ols_annual']:.2%}",
+                        help="Risk-adjusted excess return over market (annualized)"
+                    )
                     
                     st.markdown("---")
                     
                     # ========================================================================
                     # RISK-ADJUSTED PERFORMANCE RATIOS
                     # ========================================================================
-                    st.markdown("## 📉 Risk-Adjusted Performance Ratios")
+                    st.markdown("## Risk-Adjusted Performance Ratios")
                     
                     ratio_col1, ratio_col2, ratio_col3, ratio_col4 = st.columns(4)
                     
@@ -939,7 +971,7 @@ def display_live_portfolio():
                     # ========================================================================
                     # RISK METRICS
                     # ========================================================================
-                    st.markdown("## ⚠️ Risk Metrics")
+                    st.markdown("## Risk Metrics")
                     
                     risk_col1, risk_col2, risk_col3, risk_col4 = st.columns(4)
                     
@@ -975,7 +1007,7 @@ def display_live_portfolio():
                     # VISUALIZATIONS
                     # ========================================================================
                     st.markdown("---")
-                    st.markdown("### 📊 Comprehensive Dashboard")
+                    st.markdown("### Comprehensive Dashboard")
                     
                     # Main comprehensive dashboard
                     dashboard_fig = analyzer.create_comprehensive_dashboard()
@@ -984,7 +1016,7 @@ def display_live_portfolio():
                     
                     # Additional detailed charts
                     st.markdown("---")
-                    st.markdown("### 📉 Additional Analysis")
+                    st.markdown("### Additional Analysis")
                     
                     detail_tab1, detail_tab2, detail_tab3, detail_tab4 = st.tabs([
                         "Scatter Plot", 
@@ -1014,11 +1046,11 @@ def display_live_portfolio():
                         st.caption("Risk-return profile showing annualized metrics for strategy vs market")
                     
                 except Exception as e:
-                    st.error(f"⚠️ Error in beta analysis: {str(e)}")
+                    st.error(f"Error in beta analysis: {str(e)}")
                     st.info("Make sure the data has both 'initial_value' (market price) and 'current_value' (portfolio value) columns.")
             
             elif len(asset_df) < 30:
-                st.warning("⚠️ Insufficient data points for reliable beta analysis. Need at least 30 observations.")
+                st.warning("Insufficient data points for reliable beta analysis. Need at least 30 observations.")
             else:
                 st.info("No data available for selected asset.")
 
@@ -1106,12 +1138,12 @@ def format_dataframe(df):
 
 def main():
     st.set_page_config(
-        page_title="Atlas Cedar Dashboard",
-        page_icon="📊",
+        page_title="Atlas Cedar Reporting Dashboard",
+        page_icon="",
         layout="wide"
     )
 
-    st.title("Atlas Cedar Dashboard - Live Results")
+    st.title("Atlas Cedar Reporting Dashboard")
 
     if not check_password():
         st.stop()
