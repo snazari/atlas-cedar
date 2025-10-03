@@ -256,7 +256,6 @@ def main():
             print("3. Exit")
             
             choice = input("\nEnter choice (1-3): ")
-            
             if choice == '1':
                 interactive_import()
             elif choice == '2':

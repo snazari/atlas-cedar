@@ -87,23 +87,13 @@ print_info "Download directory: $LOCAL_DOWNLOAD_DIR"
 print_info "Remote server: ${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PORT}"
 echo ""
 
-# Check if sshpass is available for password auth
-if command -v sshpass &> /dev/null; then
-    print_step "Enter SSH password (or press Enter to use key only):"
-    read -s SSH_PASSWORD
-    echo ""
-    if [ -n "$SSH_PASSWORD" ]; then
-        export SSHPASS="$SSH_PASSWORD"
-        USE_PASSWORD=true
-        print_info "Using password authentication"
-    else
-        USE_PASSWORD=false
-        print_info "Using SSH key authentication"
-    fi
-else
-    USE_PASSWORD=false
-    print_info "Using SSH key authentication (install sshpass for password option)"
-fi
+# Add SSH key to agent (you'll enter passphrase once)
+print_step "Adding SSH key to agent..."
+echo ""
+eval "$(ssh-agent -s)" > /dev/null
+ssh-add "$SSH_KEY"
+echo ""
+print_info "SSH key loaded - no more passphrase prompts needed"
 echo ""
 
 # Download counter
@@ -120,11 +110,7 @@ for remote_path in "${FILES_TO_DOWNLOAD[@]}"; do
     
     print_step "[$current_file/$total_files] Downloading: ${CYAN}$base_name${RESET}"
     
-    if [ "$USE_PASSWORD" = true ]; then
-        sshpass -e scp -o StrictHostKeyChecking=no -P "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST:$remote_path" "$local_dest" 2>&1
-    else
-        scp -o StrictHostKeyChecking=no -i "$SSH_KEY" -P "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST:$remote_path" "$local_dest" 2>&1
-    fi
+    scp -o StrictHostKeyChecking=no -i "$SSH_KEY" -P "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST:$remote_path" "$local_dest" 2>&1
     
     if [ $? -eq 0 ]; then
         file_size=$(ls -lh "$local_dest" | awk '{print $5}')
@@ -144,8 +130,14 @@ else
     echo -e "${YELLOW}${BOLD}⚠️  Downloaded: $success_count | Failed: $failed_count${RESET}\n"
 fi
 
+# Import CSV files to database (includes market prices from CSV)
+print_header "💾 IMPORTING DATA TO DATABASE"
 /opt/anaconda3/envs/gt/bin/python bulk_import_csv.py
+
+# Launch Streamlit dashboard
+print_header "🚀 LAUNCHING DASHBOARD"
 /opt/anaconda3/envs/gt/bin/streamlit run streamlit_results_viewer.py
+
 # ═══════════════════════════════════════════════════════════════════════════
 # Database Loading
 # ═══════════════════════════════════════════════════════════════════════════
@@ -159,36 +151,8 @@ fi
 #if [ $? -eq 0 ]; then
 #    print_info "Existing records in database: ${BOLD}$existing_records${RESET}"
 #else
-#    print_error "Failed to read database"
-#fi
-#print_separator
-
-# Function to extract asset name from filename
-#get_asset_name() {
-#    local filename=$1
-#    if [[ $filename == BTC_* ]]; then
-#        echo "BTC"
-#    elif [[ $filename == ETH_* ]]; then
-#        echo "ETH"
-#    elif [[ $filename == XRP_* ]]; then
-#        echo "XRP"
-#    elif [[ $filename == SOL_* ]]; then
-#        echo "SOL"
-#    else
-#        echo "UNKNOWN"
-#    fi
-#}
-
-# Load CSV files into database
-#loaded_count=0
-#new_records_added=0
-#for csv_file in "$LOCAL_DOWNLOAD_DIR"/*.csv; do
-#    if [ -f "$csv_file" ]; then
-#        filename=$(basename "$csv_file")
-#        asset_name=$(get_asset_name "$filename")
         
-#        print_step "Loading: ${CYAN}$filename${RESET} → ${MAGENTA}$asset_name${RESET}"
-        
+        print_step "Loading: ${CYAN}$filename${RESET} → ${MAGENTA}$asset_name${RESET}"
         # Count lines (excluding header)
         #line_count=$(($(wc -l < "$csv_file") - 1))
         

@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import json
 import os
 import glob
@@ -8,10 +9,21 @@ import hashlib
 import sqlite3
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
+# Import beta analyzer
+from beta_analyzer_streamlit import StreamlitBetaAnalyzer
 
 # Configuration
 PASSWORD_HASH = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"  # Default: "password"
 # To generate a new password hash, use: hashlib.sha256("your_password".encode()).hexdigest()
+
+# Gemini API Configuration
+GEMINI_API_KEY = "AIzaSyBt5Y1JsKMS5kuvkZpRhV1CKa06SHU4z-s"
 
 def check_password():
     """Returns `True` if the user had the correct password."""
@@ -103,6 +115,49 @@ def get_available_assets():
     finally:
         conn.close()
 
+def generate_ai_summary(asset_name, metrics):
+    """Generate an AI-powered summary of asset performance using Google Gemini."""
+    if not GEMINI_AVAILABLE:
+        return "⚠️ Google Gemini library not installed. Run: pip install google-generativeai"
+    
+    if not GEMINI_API_KEY:
+        return "⚠️ Gemini API key not set. Set GEMINI_API_KEY environment variable."
+    
+    try:
+        # Configure Gemini
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-2.5-pro')  # Updated model name
+        
+        # Construct prompt with metrics
+        prompt = f"""You are a financial analyst. Provide a concise one-paragraph summary (3-4 sentences) of this cryptocurrency trading algorithm's performance.
+
+Asset: {asset_name}
+Metrics:
+- Total Gain: {metrics.get('gain_percent', 'N/A')}%
+- Current Value: ${metrics.get('current_value', 'N/A'):,.2f}
+- Initial Value: ${metrics.get('initial_value', 'N/A'):,.2f}
+- Sharpe Ratio: {metrics.get('sharpe_ratio', 'N/A')}
+- Alpha (Annualized): {metrics.get('alpha', 'N/A')}
+- Beta: {metrics.get('beta', 'N/A')}
+- Max Drawdown from Initial: {metrics.get('dd_init_percent', 'N/A')}%
+- Data Points: {metrics.get('data_points', 'N/A')}
+- Date Range: {metrics.get('date_range', 'N/A')}
+
+Provide a professional analysis focusing on:
+1. Overall performance assessment
+2. Risk-adjusted returns (Sharpe ratio interpretation)
+3. Market sensitivity (Alpha/Beta interpretation)
+4. Key strengths or concerns
+
+Keep it concise and actionable."""
+        
+        # Generate summary
+        response = model.generate_content(prompt)
+        return response.text
+        
+    except Exception as e:
+        return f"⚠️ Error generating summary: {str(e)}"
+
 def display_live_portfolio():
     """Renders the live portfolio dashboard with support for multiple assets."""
     st.header("Live Portfolio Monitor")
@@ -133,217 +188,839 @@ def display_live_portfolio():
         st.warning("Please select at least one asset to display")
         return
     
-    # Display metrics for each selected asset
-    st.subheader("Portfolio Metrics Overview")
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PORTFOLIO-WIDE SUMMARY
+    # ═══════════════════════════════════════════════════════════════════════════
     
-    # Create columns and display metrics for all selected assets
-    if selected_assets:
-        metrics_cols = st.columns(len(selected_assets))
-        
-        for idx, asset in enumerate(selected_assets):
-            asset_df = get_portfolio_data(asset)
-            if not asset_df.empty:
-                with metrics_cols[idx]:
-                    latest_data = asset_df.iloc[-1]
-                    latest_value = latest_data['current_value']
-                    
-                    # Handle initial_value - it might not exist in all data
-                    if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
-                        initial_value = latest_data['initial_value']
-                    else:
-                        initial_value = asset_df.iloc[0]['current_value']
-                    
-                    total_pl = latest_value - initial_value
-                    pl_percent = (total_pl / initial_value) * 100
-                    
-                    # Add icon based on asset
-                    if "BTC" in asset:
-                        asset_label = f"🟠 {asset}"
-                    elif "ETH" in asset:
-                        asset_label = f"🔵 {asset}"
-                    elif "XRP" in asset:
-                        asset_label = f"🔵 {asset}"
-                    elif "SOL" in asset:
-                        asset_label = f"🟣 {asset}"
-                    else:
-                        asset_label = f"📊 {asset}"
-                        
-                    st.metric(
-                        asset_label,
-                        f"${latest_value:,.2f}",
-                        f"${total_pl:+,.2f} ({pl_percent:+.2f}%)"
-                    )
-                    
-                    # Show fee if available
-                    if 'fee' in latest_data and pd.notna(latest_data['fee']) and latest_data['fee'] > 0:
-                        st.caption(f"Fee: ${latest_data['fee']:.2f}")
-                    
-                    last_updated = latest_data['timestamp'].strftime('%Y-%m-%d %H:%M')
-                    st.caption(f"Updated: {last_updated}")
+    st.markdown("---")
+    st.markdown("## 💼 Portfolio Summary")
     
-    # Global chart options
-    st.subheader("Chart Settings")
-    col1, col2, col3 = st.columns([2, 2, 2])
-    with col1:
-        chart_type = st.selectbox("Chart Type", ["Absolute Values", "Normalized (Base 100)", "Percentage Change"])
-    with col2:
-        show_markers = st.checkbox("Show Markers", value=True)
-    with col3:
-        sampling_freq = st.selectbox("Frequency", ["Weekly", "Daily", "Hourly"], index=2)
+    # Calculate portfolio-wide statistics
+    portfolio_stats = []
+    total_current_value = 0
+    total_initial_value = 0
     
-    # Color palette
-    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-    
-    # Create a separate section for each asset
-    for idx, asset in enumerate(selected_assets):
-        st.divider()
-        
-        # Add colored header based on asset
-        if "BTC" in asset:
-            st.markdown(f"## 🟠 {asset} - Bitcoin")
-        elif "ETH" in asset:
-            st.markdown(f"## 🔵 {asset} - Ethereum")
-        elif "XRP" in asset:
-            st.markdown(f"## 🔵 {asset} - Ripple")
-        elif "SOL" in asset:
-            st.markdown(f"## 🟣 {asset} - Solana")
-        else:
-            st.markdown(f"## 📊 {asset} Portfolio Analysis")
-        
+    for asset in selected_assets:
         asset_df = get_portfolio_data(asset)
         if not asset_df.empty:
-            # Create columns for this asset's specific info
-            info_col1, info_col2, info_col3, info_col4 = st.columns(4)
-            
-            # Calculate statistics for this asset
             latest_data = asset_df.iloc[-1]
             first_data = asset_df.iloc[0]
             
-            with info_col1:
-                st.metric("Data Points", len(asset_df))
-            with info_col2:
-                date_range = f"{first_data['timestamp'].strftime('%Y-%m-%d')} to {latest_data['timestamp'].strftime('%Y-%m-%d')}"
-                st.metric("Date Range", date_range)
+            current_value = latest_data['current_value']
+            if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
+                initial_value = latest_data['initial_value']
+            else:
+                initial_value = first_data['current_value']
             
-            # Calculate daily returns for volatility and Sharpe ratio
-            asset_df_copy = asset_df.set_index('timestamp')
-            daily_returns = asset_df_copy['current_value'].resample('D').last().pct_change().dropna()
+            gain = current_value - initial_value
+            gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
             
-            with info_col3:
-                # Calculate volatility (standard deviation of daily returns)
-                if len(daily_returns) > 0:
-                    volatility = daily_returns.std() * 100  # Convert to percentage
-                    st.metric("Daily Volatility", f"{volatility:.2f}%")
-                else:
-                    st.metric("Daily Volatility", "N/A")
+            portfolio_stats.append({
+                'asset': asset,
+                'current_value': current_value,
+                'initial_value': initial_value,
+                'gain': gain,
+                'gain_percent': gain_percent
+            })
             
-            with info_col4:
-                # Calculate Sharpe Ratio (annualized)
-                if len(daily_returns) > 0 and daily_returns.std() > 0:
-                    # Annualize: multiply daily mean by sqrt(252) for trading days
-                    mean_return = daily_returns.mean()
-                    std_return = daily_returns.std()
-                    # Annualized Sharpe ratio
-                    sharpe_ratio = (mean_return / std_return) * (252 ** 0.5)
-                    st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
-                else:
-                    st.metric("Sharpe Ratio", "N/A")
-            
-            # Create the chart for this specific asset
-            fig = go.Figure()
-            
-            # Set timestamp as index for resampling
-            asset_df = asset_df.set_index('timestamp')
-            
-            # Resample based on selected frequency
-            if sampling_freq == "Weekly":
-                resampled_df = asset_df[['current_value']].resample('W').last()
-                resampled_df = resampled_df.fillna(method='ffill')
-            elif sampling_freq == "Daily":
-                resampled_df = asset_df[['current_value']].resample('D').last()
-                resampled_df = resampled_df.fillna(method='ffill')
-            else:  # Hourly - use original data
-                resampled_df = asset_df[['current_value']]
-            
-            # Reset index to get timestamp back as column
-            resampled_df = resampled_df.reset_index()
-            x_values = resampled_df['timestamp']
-            
-            if chart_type == "Absolute Values":
-                y_values = resampled_df['current_value']
-                y_title = "Portfolio Value (USD)"
-            elif chart_type == "Normalized (Base 100)":
-                first_value = resampled_df['current_value'].iloc[0]
-                y_values = (resampled_df['current_value'] / first_value) * 100
-                y_title = "Normalized Value (Base = 100)"
-            else:  # Percentage Change
-                first_value = resampled_df['current_value'].iloc[0]
-                y_values = ((resampled_df['current_value'] - first_value) / first_value) * 100
-                y_title = "Percentage Change (%)"
-            
-            mode = 'lines+markers' if show_markers else 'lines'
-            
-            # Main trace
-            fig.add_trace(go.Scatter(
-                x=x_values,
-                y=y_values,
-                mode=mode,
-                name=asset,
-                line=dict(color=colors[idx % len(colors)], width=2),
-                marker=dict(size=6) if show_markers else None,
-                hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Value: %{y:.2f}<extra></extra>'
-            ))
-            
-            # Add min/max markers
-            min_idx = y_values.idxmin()
-            max_idx = y_values.idxmax()
-            
-            fig.add_trace(go.Scatter(
-                x=[x_values.iloc[min_idx]],
-                y=[y_values.iloc[min_idx]],
-                mode='markers+text',
-                name='Min',
-                marker=dict(color='red', size=10, symbol='triangle-down'),
-                text=[f"Min: {y_values.iloc[min_idx]:.2f}"],
-                textposition="bottom center",
-                showlegend=False
-            ))
-            
-            fig.add_trace(go.Scatter(
-                x=[x_values.iloc[max_idx]],
-                y=[y_values.iloc[max_idx]],
-                mode='markers+text',
-                name='Max',
-                marker=dict(color='green', size=10, symbol='triangle-up'),
-                text=[f"Max: {y_values.iloc[max_idx]:.2f}"],
-                textposition="top center",
-                showlegend=False
-            ))
-            
-            fig.update_layout(
-                title=f"{asset} - {chart_type} ({sampling_freq})",
-                xaxis_title="Date",
-                yaxis_title=y_title,
-                template="plotly_white",
-                hovermode='x unified',
-                height=400,
-                showlegend=False
+            total_current_value += current_value
+            total_initial_value += initial_value
+    
+    # Calculate overall portfolio metrics
+    total_gain = total_current_value - total_initial_value
+    total_gain_percent = (total_gain / total_initial_value) * 100 if total_initial_value > 0 else 0
+    
+    # Find best and worst performers
+    if portfolio_stats:
+        best_performer = max(portfolio_stats, key=lambda x: x['gain_percent'])
+        worst_performer = min(portfolio_stats, key=lambda x: x['gain_percent'])
+    
+    # Display summary cards
+    summary_col1, summary_col2, summary_col3 = st.columns(3)
+    
+    with summary_col1:
+        st.metric(
+            "💰 Total Portfolio Value",
+            f"${total_current_value:,.2f}",
+            f"${total_gain:+,.2f} ({total_gain_percent:+.2f}%)"
+        )
+    
+    with summary_col2:
+        if portfolio_stats:
+            st.metric(
+                "🏆 Best Performer",
+                best_performer['asset'],
+                f"{best_performer['gain_percent']:+.2f}%"
             )
+    
+    with summary_col3:
+        if portfolio_stats:
+            st.metric(
+                "📉 Worst Performer",
+                worst_performer['asset'],
+                f"{worst_performer['gain_percent']:+.2f}%"
+            )
+    
+    st.markdown("---")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TABBED INTERFACE
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "📈 Detailed Charts", "📊 Statistics", "🗃️ Raw Data", "📉 Beta Analysis"])
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TAB 1: OVERVIEW
+    # ═══════════════════════════════════════════════════════════════════════════
+    with tab1:
+        st.subheader("Individual Asset Overview")
+        
+        # Create columns and display metrics for all selected assets
+        if selected_assets:
+            metrics_cols = st.columns(len(selected_assets))
             
-            # Add grid
-            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+            for idx, asset in enumerate(selected_assets):
+                asset_df = get_portfolio_data(asset)
+                if not asset_df.empty:
+                    with metrics_cols[idx]:
+                        latest_data = asset_df.iloc[-1]
+                        latest_value = latest_data['current_value']
+                        
+                        # Handle initial_value - it might not exist in all data
+                        if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
+                            initial_value = latest_data['initial_value']
+                        else:
+                            initial_value = asset_df.iloc[0]['current_value']
+                        
+                        total_pl = latest_value - initial_value
+                        pl_percent = (total_pl / initial_value) * 100
+                        
+                        # Add icon based on asset
+                        if "BTC" in asset:
+                            asset_label = f"🟠 {asset}"
+                        elif "ETH" in asset:
+                            asset_label = f"🔵 {asset}"
+                        elif "XRP" in asset:
+                            asset_label = f"🔵 {asset}"
+                        elif "SOL" in asset:
+                            asset_label = f"🟣 {asset}"
+                        else:
+                            asset_label = f"📊 {asset}"
+                            
+                        st.metric(
+                            asset_label,
+                            f"${latest_value:,.2f}",
+                            f"${total_pl:+,.2f} ({pl_percent:+.2f}%)"
+                        )
+                        
+                        # Show fee if available
+                        if 'fee' in latest_data and pd.notna(latest_data['fee']) and latest_data['fee'] > 0:
+                            st.caption(f"Fee: ${latest_data['fee']:.2f}")
+                        
+                        last_updated = latest_data['timestamp'].strftime('%Y-%m-%d %H:%M')
+                        st.caption(f"Updated: {last_updated}")
+        
+        # AI Summary Section - Display below asset cards
+        st.markdown("---")
+        st.markdown("### 🤖 AI Performance Analysis")
+        st.markdown("*Click the button below each asset to generate an AI-powered performance summary*")
+        
+        # Create individual sections for each asset's AI summary
+        for asset in selected_assets:
+            asset_df = get_portfolio_data(asset)
+            if not asset_df.empty:
+                with st.container():
+                    # Asset header
+                    if "BTC" in asset:
+                        st.markdown(f"#### 🟠 {asset}")
+                    elif "ETH" in asset:
+                        st.markdown(f"#### 🔵 {asset}")
+                    elif "XRP" in asset:
+                        st.markdown(f"#### 🔵 {asset}")
+                    elif "SOL" in asset:
+                        st.markdown(f"#### 🟣 {asset}")
+                    else:
+                        st.markdown(f"#### 📊 {asset}")
+                    
+                    # Calculate metrics for AI summary
+                    latest_data = asset_df.iloc[-1]
+                    first_data = asset_df.iloc[0]
+                    
+                    current_value = latest_data['current_value']
+                    if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
+                        initial_value = latest_data['initial_value']
+                    else:
+                        initial_value = first_data['current_value']
+                    
+                    gain = current_value - initial_value
+                    gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
+                    
+                    min_val = asset_df['current_value'].min()
+                    dd_init = min_val - first_data['current_value']
+                    dd_init_percent = (dd_init / first_data['current_value']) * 100
+                    
+                    date_range = f"{first_data['timestamp'].strftime('%Y-%m-%d')} to {latest_data['timestamp'].strftime('%Y-%m-%d')}"
+                    
+                    # Calculate Sharpe, Alpha, Beta
+                    asset_df_copy = asset_df.set_index('timestamp')
+                    hourly_returns = asset_df_copy['current_value'].resample('h').last().pct_change().dropna()
+                    
+                    sharpe_value = "N/A"
+                    if len(hourly_returns) > 0 and hourly_returns.std() > 0:
+                        mean_return = hourly_returns.mean()
+                        std_return = hourly_returns.std()
+                        sharpe_value = f"{(mean_return / std_return) * (252 ** 0.5):.2f}"
+                    
+                    alpha_value = "N/A"
+                    beta_value = "N/A"
+                    try:
+                        df_capm = asset_df.copy()
+                        df_capm = df_capm.reset_index()
+                        df_capm['timestamp'] = pd.to_datetime(df_capm['timestamp'])
+                        df_capm.set_index('timestamp', inplace=True)
+                        df_capm.sort_index(inplace=True)
+                        
+                        if 'initial_value' in df_capm.columns and df_capm['initial_value'].notna().any():
+                            df_capm['market_return'] = df_capm['initial_value'].pct_change()
+                            df_capm['portfolio_return'] = df_capm['current_value'].pct_change()
+                            df_capm.dropna(inplace=True)
+                            
+                            if len(df_capm) > 2:
+                                X = df_capm['market_return'].values
+                                y = df_capm['portfolio_return'].values
+                                X_with_const = np.column_stack([np.ones(len(X)), X])
+                                result = np.linalg.lstsq(X_with_const, y, rcond=None)
+                                alpha, beta = result[0]
+                                dt_index = df_capm.index
+                                avg_seconds = (dt_index[-1] - dt_index[0]).total_seconds() / (len(dt_index) - 1)
+                                periods_per_year = (365.25 * 24 * 3600) / avg_seconds
+                                alpha_annualized = alpha * periods_per_year
+                                alpha_value = f"{alpha_annualized:.4f}"
+                                beta_value = f"{beta:.4f}"
+                    except:
+                        pass
+                    
+                    metrics_dict = {
+                        'gain_percent': gain_percent,
+                        'current_value': current_value,
+                        'initial_value': initial_value,
+                        'sharpe_ratio': sharpe_value,
+                        'alpha': alpha_value,
+                        'beta': beta_value,
+                        'dd_init_percent': dd_init_percent,
+                        'data_points': len(asset_df),
+                        'date_range': date_range
+                    }
+                    
+                    # Generate AI summary button
+                    if st.button(f"🤖 Generate AI Summary", key=f"ai_summary_overview_{asset}"):
+                        with st.spinner("Generating AI analysis..."):
+                            summary = generate_ai_summary(asset, metrics_dict)
+                            # Display in a styled container
+                            st.info(summary)
+                    
+                    st.markdown("")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TAB 2: DETAILED CHARTS
+    # ═══════════════════════════════════════════════════════════════════════════
+    with tab2:
+        # Global chart options
+        with st.container():
+            st.subheader("Chart Settings")
+            col1, col2, col3 = st.columns([2, 2, 2])
+            with col1:
+                chart_type = st.selectbox("Chart Type", ["Absolute Values", "Normalized (Base 100)", "Percentage Change"])
+            with col2:
+                show_markers = st.checkbox("Show Markers", value=True)
+            with col3:
+                sampling_freq = st.selectbox("Frequency", ["Weekly", "Daily", "Hourly"], index=2)
+        
+        # Color palette
+        colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        
+        # Create a separate section for each asset
+        for idx, asset in enumerate(selected_assets):
+            st.divider()
             
-            st.plotly_chart(fig, use_container_width=True)
+            # Add colored header based on asset
+            if "BTC" in asset:
+                st.markdown(f"## 🟠 {asset} - Bitcoin")
+            elif "ETH" in asset:
+                st.markdown(f"## 🔵 {asset} - Ethereum")
+            elif "XRP" in asset:
+                st.markdown(f"## 🔵 {asset} - Ripple")
+            elif "SOL" in asset:
+                st.markdown(f"## 🟣 {asset} - Solana")
+            else:
+                st.markdown(f"## 📊 {asset} Portfolio Analysis")
             
-            # Show data table in an expander
-            with st.expander(f"View {asset} Raw Data"):
-                # Show last 10 records
-                display_df = resampled_df.tail(10).copy()
-                display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
-                display_df.columns = ['Date', 'Value']
-                st.dataframe(display_df, use_container_width=True)
+            asset_df = get_portfolio_data(asset)
+            if not asset_df.empty:
+                # Calculate statistics for this asset
+                latest_data = asset_df.iloc[-1]
+                first_data = asset_df.iloc[0]
+                min_idx = asset_df['current_value'].idxmin()
+                min_val = asset_df.loc[min_idx, 'current_value']
+                max_idx = asset_df['current_value'].idxmax()
+                max_val = asset_df.loc[max_idx, 'current_value']
+                
+                # Calculate hourly returns for volatility and Sharpe ratio
+                asset_df_copy = asset_df.set_index('timestamp')
+                hourly_returns = asset_df_copy['current_value'].resample('h').last().pct_change().dropna()
+                
+                # === FIRST ROW OF METRICS ===
+                st.markdown("### 📊 Key Metrics")
+                row1_col1, row1_col2, row1_col3 = st.columns(3)
+                
+                with row1_col1:
+                    st.metric("Data Points", len(asset_df))
+                with row1_col2:
+                    date_range = f"{first_data['timestamp'].strftime('%Y-%m-%d')} to {latest_data['timestamp'].strftime('%Y-%m-%d')}"
+                    st.metric("Date Range", date_range)
+                with row1_col3:
+                    gain = latest_data['current_value'] - first_data['current_value']
+                    gain_percent = (gain / first_data['current_value']) * 100
+                    st.metric("Gain", f"{gain_percent:.2f}%")
+                
+                # === SECOND ROW OF METRICS ===
+                st.markdown("### 📈 Performance Indicators")
+                row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
+                
+                with row2_col1:
+                    dd_init = min_val - first_data['current_value']
+                    dd_init_percent = (dd_init / first_data['current_value']) * 100
+                    st.metric("DD from Init", f"{dd_init_percent:.2f}%")
+                
+                with row2_col2:
+                    # Calculate Sharpe Ratio (annualized)
+                    if len(hourly_returns) > 0 and hourly_returns.std() > 0:
+                        mean_return = hourly_returns.mean()
+                        std_return = hourly_returns.std()
+                        sharpe_ratio = (mean_return / std_return) * (252 ** 0.5)
+                        st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+                    else:
+                        st.metric("Sharpe Ratio", "N/A")
+                
+                with row2_col3:
+                    try:
+                        # Prepare data for CAPM regression
+                        df_capm = asset_df.copy()
+                        df_capm = df_capm.reset_index()
+                        df_capm['timestamp'] = pd.to_datetime(df_capm['timestamp'])
+                        df_capm.set_index('timestamp', inplace=True)
+                        df_capm.sort_index(inplace=True)
+                        
+                        # Check if we have initial_value column (as proxy for market/benchmark)
+                        if 'initial_value' in df_capm.columns and df_capm['initial_value'].notna().any():
+                            # Calculate returns
+                            df_capm['market_return'] = df_capm['initial_value'].pct_change()
+                            df_capm['portfolio_return'] = df_capm['current_value'].pct_change()
+                            df_capm.dropna(inplace=True)
+                            
+                            if len(df_capm) > 2:
+                                # CAPM regression: portfolio_return = alpha + beta * market_return
+                                X = df_capm['market_return'].values
+                                y = df_capm['portfolio_return'].values
+                                
+                                # Add intercept term for alpha
+                                X_with_const = np.column_stack([np.ones(len(X)), X])
+                                
+                                # OLS regression
+                                result = np.linalg.lstsq(X_with_const, y, rcond=None)
+                                alpha, beta = result[0]
+                                
+                                # Infer frequency to annualize alpha
+                                dt_index = df_capm.index
+                                avg_seconds = (dt_index[-1] - dt_index[0]).total_seconds() / (len(dt_index) - 1)
+                                periods_per_year = (365.25 * 24 * 3600) / avg_seconds
+                                alpha_annualized = alpha * periods_per_year
+                                
+                                st.metric("Alpha (Ann.)", f"{alpha_annualized:.4f}")
+                            else:
+                                st.metric("Alpha (Ann.)", "N/A")
+                        else:
+                            st.metric("Alpha (Ann.)", "N/A")
+                    except Exception as e:
+                        st.metric("Alpha (Ann.)", "N/A")
+            
+                with row2_col4:
+                    try:
+                        # Use same CAPM data from above
+                        df_capm = asset_df.copy()
+                        df_capm = df_capm.reset_index()
+                        df_capm['timestamp'] = pd.to_datetime(df_capm['timestamp'])
+                        df_capm.set_index('timestamp', inplace=True)
+                        df_capm.sort_index(inplace=True)
+                        
+                        if 'initial_value' in df_capm.columns and df_capm['initial_value'].notna().any():
+                            df_capm['market_return'] = df_capm['initial_value'].pct_change()
+                            df_capm['portfolio_return'] = df_capm['current_value'].pct_change()
+                            df_capm.dropna(inplace=True)
+                            
+                            if len(df_capm) > 2:
+                                X = df_capm['market_return'].values
+                                y = df_capm['portfolio_return'].values
+                                X_with_const = np.column_stack([np.ones(len(X)), X])
+                                result = np.linalg.lstsq(X_with_const, y, rcond=None)
+                                alpha, beta = result[0]
+                                
+                                st.metric("Beta", f"{beta:.4f}")
+                            else:
+                                st.metric("Beta", "N/A")
+                        else:
+                            st.metric("Beta", "N/A")
+                    except Exception as e:
+                        st.metric("Beta", "N/A")
+                
+                # Create the chart for this specific asset
+                fig = go.Figure()
+                
+                # Set timestamp as index for resampling
+                asset_df = asset_df.set_index('timestamp')
+                
+                # Resample based on selected frequency
+                if sampling_freq == "Weekly":
+                    resampled_df = asset_df[['current_value']].resample('W').last()
+                    resampled_df = resampled_df.fillna(method='ffill')
+                elif sampling_freq == "Daily":
+                    resampled_df = asset_df[['current_value']].resample('D').last()
+                    resampled_df = resampled_df.fillna(method='ffill')
+                else:  # Hourly - use original data
+                    resampled_df = asset_df[['current_value']]
+                
+                # Reset index to get timestamp back as column
+                resampled_df = resampled_df.reset_index()
+                x_values = resampled_df['timestamp']
+                
+                if chart_type == "Absolute Values":
+                    y_values = resampled_df['current_value']
+                    y_title = "Portfolio Value (USD)"
+                elif chart_type == "Normalized (Base 100)":
+                    first_value = resampled_df['current_value'].iloc[0]
+                    y_values = (resampled_df['current_value'] / first_value) * 100
+                    y_title = "Normalized Value (Base = 100)"
+                else:  # Percentage Change
+                    first_value = resampled_df['current_value'].iloc[0]
+                    y_values = ((resampled_df['current_value'] - first_value) / first_value) * 100
+                    y_title = "Percentage Change (%)"
+                
+                mode = 'lines+markers' if show_markers else 'lines'
+                
+                # Main trace
+                fig.add_trace(go.Scatter(
+                    x=x_values,
+                    y=y_values,
+                    mode=mode,
+                    name=asset,
+                    line=dict(color=colors[idx % len(colors)], width=2),
+                    marker=dict(size=6) if show_markers else None,
+                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Value: %{y:.2f}<extra></extra>'
+                ))
+                
+                # Add min/max markers
+                min_idx = y_values.idxmin()
+                max_idx = y_values.idxmax()
+                
+                fig.add_trace(go.Scatter(
+                    x=[x_values.iloc[min_idx]],
+                    y=[y_values.iloc[min_idx]],
+                    mode='markers+text',
+                    name='Min',
+                    marker=dict(color='red', size=10, symbol='triangle-down'),
+                    text=[f"Min: {y_values.iloc[min_idx]:.2f}"],
+                    textposition="bottom center",
+                    showlegend=False
+                ))
+                
+                fig.add_trace(go.Scatter(
+                    x=[x_values.iloc[max_idx]],
+                    y=[y_values.iloc[max_idx]],
+                    mode='markers+text',
+                    name='Max',
+                    marker=dict(color='green', size=10, symbol='triangle-up'),
+                    text=[f"Max: {y_values.iloc[max_idx]:.2f}"],
+                    textposition="top center",
+                    showlegend=False
+                ))
+                
+                fig.update_layout(
+                    title=f"{asset} - {chart_type} ({sampling_freq})",
+                    xaxis_title="Date",
+                    yaxis_title=y_title,
+                    template="plotly_white",
+                    hovermode='x unified',
+                    height=400,
+                    showlegend=False
+                )
+                
+                # Add grid
+                fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+                fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+                
+                st.plotly_chart(fig, use_container_width=True)
+            
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TAB 3: STATISTICS
+    # ═══════════════════════════════════════════════════════════════════════════
+    with tab3:
+        st.subheader("Detailed Statistics")
+        
+        # Create a statistics table for all assets
+        stats_data = []
+        for asset in selected_assets:
+            asset_df = get_portfolio_data(asset)
+            if not asset_df.empty:
+                latest_data = asset_df.iloc[-1]
+                first_data = asset_df.iloc[0]
+                
+                current_value = latest_data['current_value']
+                if 'initial_value' in latest_data and pd.notna(latest_data['initial_value']):
+                    initial_value = latest_data['initial_value']
+                else:
+                    initial_value = first_data['current_value']
+                
+                gain = current_value - initial_value
+                gain_percent = (gain / initial_value) * 100 if initial_value > 0 else 0
+                
+                min_val = asset_df['current_value'].min()
+                max_val = asset_df['current_value'].max()
+                avg_val = asset_df['current_value'].mean()
+                
+                stats_data.append({
+                    'Asset': asset,
+                    'Current Value': f"${current_value:,.2f}",
+                    'Initial Value': f"${initial_value:,.2f}",
+                    'Gain': f"${gain:+,.2f}",
+                    'Gain %': f"{gain_percent:+.2f}%",
+                    'Min': f"${min_val:,.2f}",
+                    'Max': f"${max_val:,.2f}",
+                    'Avg': f"${avg_val:,.2f}",
+                    'Data Points': len(asset_df)
+                })
+        
+        if stats_data:
+            stats_df = pd.DataFrame(stats_data)
+            st.dataframe(stats_df, use_container_width=True, hide_index=True)
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TAB 4: RAW DATA
+    # ═══════════════════════════════════════════════════════════════════════════
+    with tab4:
+        st.subheader("Raw Data Export")
+        
+        for asset in selected_assets:
+            with st.expander(f"📄 {asset} - View/Download Data"):
+                asset_df = get_portfolio_data(asset)
+                if not asset_df.empty:
+                    # Show data info
+                    st.info(f"Total records: {len(asset_df)}")
+                    
+                    # Display options
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        num_rows = st.selectbox(
+                            f"Number of rows to display ({asset})",
+                            [10, 25, 50, 100, "All"],
+                            key=f"rows_{asset}"
+                        )
+                    with col2:
+                        sort_order = st.selectbox(
+                            f"Sort order ({asset})",
+                            ["Newest First", "Oldest First"],
+                            key=f"sort_{asset}"
+                        )
+                    
+                    # Prepare display dataframe
+                    display_df = asset_df.copy()
+                    display_df = display_df.reset_index()
+                    
+                    if sort_order == "Newest First":
+                        display_df = display_df.sort_values('timestamp', ascending=False)
+                    else:
+                        display_df = display_df.sort_values('timestamp', ascending=True)
+                    
+                    if num_rows != "All":
+                        display_df = display_df.head(int(num_rows))
+                    
+                    # Format timestamp
+                    display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    # Display dataframe
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    
+                    # Download button
+                    csv = asset_df.to_csv(index=False)
+                    st.download_button(
+                        label=f"⬇️ Download {asset} as CSV",
+                        data=csv,
+                        file_name=f"{asset}_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        key=f"download_{asset}"
+                    )
+                else:
+                    st.warning(f"No data available for {asset}")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # TAB 5: BETA ANALYSIS
+    # ═══════════════════════════════════════════════════════════════════════════
+    with tab5:
+        st.subheader("📉 Comprehensive Beta & Performance Analysis")
+        st.markdown("*Advanced statistical analysis of portfolio performance vs market benchmark*")
+        
+        # Asset selection for beta analysis
+        selected_asset_beta = st.selectbox(
+            "Select asset for beta analysis:",
+            selected_assets,
+            key="beta_asset_selector"
+        )
+        
+        if selected_asset_beta:
+            asset_df = get_portfolio_data(selected_asset_beta)
+            
+            if not asset_df.empty and len(asset_df) >= 30:
+                try:
+                    # Initialize analyzer
+                    analyzer = StreamlitBetaAnalyzer(
+                        asset_name=selected_asset_beta,
+                        confidence_level=0.95,
+                        risk_free_rate=0.0
+                    )
+                    
+                    # Load data
+                    analyzer.load_data_from_db(asset_df)
+                    
+                    # Calculate metrics
+                    with st.spinner("Calculating beta and alpha metrics..."):
+                        beta_results = analyzer.calculate_beta_alpha()
+                        perf_results = analyzer.calculate_performance_ratios()
+                    
+                    # ========================================================================
+                    # PERFORMANCE COMPARISON (TOP SECTION)
+                    # ========================================================================
+                    st.markdown("")
+                    st.markdown("## 🏆 Performance Comparison")
+                    st.markdown("*Strategy vs Market Total Returns*")
+                    
+                    # Large prominent metrics for performance comparison
+                    perf_col1, perf_col2, perf_col3 = st.columns([1, 1, 1])
+                    
+                    with perf_col1:
+                        st.metric(
+                            "📈 Strategy Total Gain",
+                            f"{perf_results['strategy_gain']:.2%}",
+                            help="Total return of the strategy over the period"
+                        )
+                    
+                    with perf_col2:
+                        st.metric(
+                            "📊 Market Total Gain",
+                            f"{perf_results['market_gain']:.2%}",
+                            help="Total return of the market over the period"
+                        )
+                    
+                    with perf_col3:
+                        # Calculate outperformance
+                        outperformance = perf_results['strategy_gain'] - perf_results['market_gain']
+                        st.metric(
+                            "✨ Outperformance",
+                            f"{outperformance:.2%}",
+                            delta=f"{outperformance:.2%}",
+                            help="Strategy return minus market return"
+                        )
+                    
+                    st.markdown("---")
+                    
+                    # ========================================================================
+                    # CORE BETA & ALPHA METRICS
+                    # ========================================================================
+                    st.markdown("## 📊 Core Beta & Alpha Metrics")
+                    
+                    # Beta metrics section
+                    st.markdown("#### Beta Analysis")
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric(
+                            "Beta (β)",
+                            f"{beta_results['beta']:.4f}",
+                            help="Sensitivity to market movements. β>1 means more volatile than market"
+                        )
+                        st.caption(f"95% CI: [{beta_results['beta_ci_lower']:.4f}, {beta_results['beta_ci_upper']:.4f}]")
+                    
+                    with col2:
+                        st.metric(
+                            "R-squared",
+                            f"{beta_results['r_squared']:.4f}",
+                            help="Proportion of variance explained by market"
+                        )
+                        st.caption(f"Correlation: {beta_results['correlation']:.4f}")
+                    
+                    with col3:
+                        st.metric(
+                            "Observations",
+                            f"{beta_results['n_observations']:,}",
+                            help="Number of data points used in analysis"
+                        )
+                        st.caption(f"Periods/year: {beta_results['periods_per_year']:,}")
+                    
+                    # Alpha metrics section
+                    st.markdown("")
+                    st.markdown("#### Alpha Metrics (Excess Returns)")
+                    alpha_col1, alpha_col2, alpha_col3 = st.columns(3)
+                    
+                    with alpha_col1:
+                        st.metric(
+                            "Regular Alpha",
+                            f"{beta_results['regular_alpha_annual']:.2%}",
+                            help="Simple excess return over market (annualized)"
+                        )
+                        st.caption(f"Per period: {beta_results['regular_alpha']:.6f}")
+                    
+                    with alpha_col2:
+                        st.metric(
+                            "Jensen's Alpha",
+                            f"{beta_results['jensens_alpha_annual']:.2%}",
+                            help="CAPM-based alpha (risk-adjusted, annualized)"
+                        )
+                        st.caption(f"Per period: {beta_results['jensens_alpha']:.6f}")
+                    
+                    with alpha_col3:
+                        st.metric(
+                            "Regression Alpha",
+                            f"{beta_results['alpha_ols_annual']:.2%}",
+                            help="OLS regression intercept (annualized)"
+                        )
+                        st.caption(f"Per period: {beta_results['alpha_ols']:.6f}")
+                    
+                    st.markdown("---")
+                    
+                    # ========================================================================
+                    # RISK-ADJUSTED PERFORMANCE RATIOS
+                    # ========================================================================
+                    st.markdown("## 📉 Risk-Adjusted Performance Ratios")
+                    
+                    ratio_col1, ratio_col2, ratio_col3, ratio_col4 = st.columns(4)
+                    
+                    with ratio_col1:
+                        sharpe_color = "normal" if perf_results['sharpe_ratio_annual'] > 1 else "inverse"
+                        st.metric(
+                            "Sharpe Ratio",
+                            f"{perf_results['sharpe_ratio_annual']:.4f}",
+                            delta_color=sharpe_color,
+                            help="Return per unit of total risk"
+                        )
+                    
+                    with ratio_col2:
+                        st.metric(
+                            "Sortino Ratio",
+                            f"{perf_results['sortino_ratio_annual']:.4f}",
+                            help="Return per unit of downside risk"
+                        )
+                    
+                    with ratio_col3:
+                        st.metric(
+                            "Treynor Ratio",
+                            f"{perf_results['treynor_ratio_annual']:.2%}",
+                            help="Return per unit of systematic risk"
+                        )
+                    
+                    with ratio_col4:
+                        st.metric(
+                            "Information Ratio",
+                            f"{perf_results['information_ratio_annual']:.4f}",
+                            help="Excess return per unit of tracking error"
+                        )
+                    
+                    st.markdown("---")
+                    
+                    # ========================================================================
+                    # RISK METRICS
+                    # ========================================================================
+                    st.markdown("## ⚠️ Risk Metrics")
+                    
+                    risk_col1, risk_col2, risk_col3, risk_col4 = st.columns(4)
+                    
+                    with risk_col1:
+                        st.metric(
+                            "Max DD (Strategy)",
+                            f"{perf_results['max_drawdown_strategy']:.2%}",
+                            help="Largest peak-to-trough decline for strategy"
+                        )
+                    
+                    with risk_col2:
+                        st.metric(
+                            "Max DD (Market)",
+                            f"{perf_results['max_drawdown_asset']:.2%}",
+                            help="Largest peak-to-trough decline for market"
+                        )
+                    
+                    with risk_col3:
+                        st.metric(
+                            "Calmar Ratio",
+                            f"{perf_results['calmar_ratio']:.4f}",
+                            help="Return / Max Drawdown"
+                        )
+                    
+                    with risk_col4:
+                        st.metric(
+                            "Tracking Error",
+                            f"{perf_results['tracking_error_annual']:.2%}",
+                            help="Volatility of excess returns"
+                        )
+
+                    # ========================================================================
+                    # VISUALIZATIONS
+                    # ========================================================================
+                    st.markdown("---")
+                    st.markdown("### 📊 Comprehensive Dashboard")
+                    
+                    # Main comprehensive dashboard
+                    dashboard_fig = analyzer.create_comprehensive_dashboard()
+                    st.plotly_chart(dashboard_fig, use_container_width=True)
+                    st.caption("📈 8-Panel comprehensive beta analysis dashboard with all key visualizations")
+                    
+                    # Additional detailed charts
+                    st.markdown("---")
+                    st.markdown("### 📉 Additional Analysis")
+                    
+                    detail_tab1, detail_tab2, detail_tab3, detail_tab4 = st.tabs([
+                        "Scatter Plot", 
+                        "Drawdown", 
+                        "Return Distribution", 
+                        "Risk-Return Profile"
+                    ])
+                    
+                    with detail_tab1:
+                        scatter_fig = analyzer.create_scatter_plot()
+                        st.plotly_chart(scatter_fig, use_container_width=True)
+                        st.caption("Scatter plot showing the relationship between market and strategy returns with regression line")
+                    
+                    with detail_tab2:
+                        dd_fig = analyzer.create_drawdown_plot()
+                        st.plotly_chart(dd_fig, use_container_width=True)
+                        st.caption("Drawdown analysis showing peak-to-trough declines over time")
+                    
+                    with detail_tab3:
+                        dist_fig = analyzer.create_return_distribution_plot()
+                        st.plotly_chart(dist_fig, use_container_width=True)
+                        st.caption("Return distribution comparison between strategy and market")
+                    
+                    with detail_tab4:
+                        risk_fig = analyzer.create_risk_return_plot()
+                        st.plotly_chart(risk_fig, use_container_width=True)
+                        st.caption("Risk-return profile showing annualized metrics for strategy vs market")
+                    
+                except Exception as e:
+                    st.error(f"⚠️ Error in beta analysis: {str(e)}")
+                    st.info("Make sure the data has both 'initial_value' (market price) and 'current_value' (portfolio value) columns.")
+            
+            elif len(asset_df) < 30:
+                st.warning("⚠️ Insufficient data points for reliable beta analysis. Need at least 30 observations.")
+            else:
+                st.info("No data available for selected asset.")
 
 def find_results_directories(base_path="."):
     """Find all directories matching the pattern 'results_*' or 'results'."""

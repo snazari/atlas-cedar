@@ -64,12 +64,14 @@ def import_csv_file(csv_file):
             print(f"  ✗ Error: 'portfolio_value' column not found in {filename}")
             return (asset_name, 0, False)
         
+        if 'price' not in df.columns:
+            print(f"  ✗ Error: 'price' column not found in {filename}")
+            return (asset_name, 0, False)
+        
         # Parse dates and values
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df['portfolio_value'] = df['portfolio_value'].astype(float)
-        
-        # Get initial value (first value in the series)
-        initial_value = df['portfolio_value'].iloc[0]
+        df['price'] = df['price'].astype(float)
         
         # Prepare data for insertion
         conn = sqlite3.connect(DB_FILE)
@@ -85,11 +87,14 @@ def import_csv_file(csv_file):
             try:
                 # Convert timestamp to string for SQLite
                 timestamp_str = row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')
+                
+                # current_value = portfolio_value (strategy)
+                # initial_value = price (market price)
                 cursor.execute('''
                     INSERT OR IGNORE INTO portfolio_data 
                     (asset_name, timestamp, current_value, initial_value, fee)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (asset_name, timestamp_str, row['portfolio_value'], initial_value, 0))
+                ''', (asset_name, timestamp_str, row['portfolio_value'], row['price'], 0))
                 if cursor.rowcount > 0:
                     inserted += 1
             except Exception as e:
